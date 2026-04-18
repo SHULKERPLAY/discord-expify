@@ -51,6 +51,40 @@ function timeDiff(time1, time2) {
     return (time2 ?? Date.now()) - (time1 ?? Date.now())
 }
 
+/** Class with functions to perform leveling calculations.
+* With current A and B multipliers recomended maximum XP is 160280000 or 1000 LVL.
+* XP gain modification allowed only in range 5-100xp per minute. Default is 10xp.
+* With 100xp ~3 years in voice required to get maximum level. With 5xp it increases to ~61 year. */ 
+class XpLeveling {
+    // Base xp multipliers. Level 1 is (A+B)
+    static A = 160
+    static B = 280
+
+    // Get level int from xp int
+    static getLevel(xp = 0) {
+        if (xp < (this.A + this.B)) return 0;
+        // Solve via discriminant: (-b + sqrt(b^2 - 4ac)) / 2a
+        const level = (Math.sqrt(Math.pow(this.B, 2) + 4 * this.A * xp) - this.B) / (2 * this.A);
+        return Math.floor(level);
+    }
+
+    // Get required cumulative xp int for level int
+    static getXpForLevel(level = 0) {
+        if (level <= 0) return 0;
+        return this.A * Math.pow(level, 2) + this.B * level;
+    }
+
+    // Get total required xp int to get from level to level+1 
+    static getXpDiff(level = 0) {
+        return this.getXpForLevel(level + 1) - this.getXpForLevel(level);
+    }
+
+    // Get progress int from start of current level to current xp int
+    static getLevelProgress(xp = 0) {
+        return (xp) - (this.getXpForLevel(this.getLevel(xp)));
+    }
+}
+
 // Public functions container
 class Lunar {
     static checkephemeral = function(interaction) {
@@ -190,4 +224,4 @@ function getDateInt(year, month, day, hour, min, sec, ms) {
 };
 
 //export
-module.exports = { convertGmtToSeconds, getRandomInt, getDateInt, getLoc, getL, shardStat, timeDiff, Lunar };
+module.exports = { convertGmtToSeconds, getRandomInt, getDateInt, getLoc, getL, shardStat, timeDiff, Lunar, XpLeveling };

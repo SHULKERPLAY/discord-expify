@@ -1,5 +1,6 @@
-const { convertGmtToSeconds, getRandomInt, getDateInt, getL, Lunar } = require('./functions.js');
+const { getL, Lunar } = require('./functions.js');
 
+// Discord User Interactions
 class Expify {
     static ping = async function(interaction, client, lang) {
         //Counting latency
