@@ -78,7 +78,7 @@ const checkDB = () => {
     // Check guild_params table
     checkColumns('guild_params', {
         'text_xp': 'INTEGER DEFAULT 1',
-        'text_xp_rate': 'INTEGER DEFAULT 15',
+        'text_xp_rate': 'INTEGER DEFAULT 20',
         'voice_xp': 'INTEGER DEFAULT 1',
         'voice_xp_rate': 'INTEGER DEFAULT 10',
         'video_xp': 'INTEGER DEFAULT 1',
@@ -96,6 +96,12 @@ const checkDB = () => {
         'xp_required': 'TEXT',
         'xp_class': 'INTEGER',
         'role_id': 'TEXT'
+    });
+
+    // Check guild_limits table
+    checkColumns('guild_limits', {
+        'migrate_1': 'INTEGER',
+        'migrage_2': 'INTEGER'
     });
 };
 
@@ -122,7 +128,7 @@ const initializeDB = () => {
         CREATE TABLE IF NOT EXISTS guild_params (
             guild_id TEXT PRIMARY KEY,
             text_xp INTEGER DEFAULT 1,
-            text_xp_rate INTEGER DEFAULT 15,
+            text_xp_rate INTEGER DEFAULT 20,
             voice_xp INTEGER DEFAULT 1,
             voice_xp_rate INTEGER DEFAULT 10,
             video_xp INTEGER DEFAULT 1,
@@ -148,6 +154,18 @@ const initializeDB = () => {
             xp_required TEXT,
             xp_class INTEGER,
             role_id TEXT
+        )
+    `).run();
+
+    /* Guild Interaction Limits.
+     * INTEGER values like 'migrate' stores Date.now() timestamp of last interaction 
+     * to check if month is passed since last usage.
+     * Here can be stored other limitation data in the future. */
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS guild_limits (
+            guild_id TEXT PRIMARY KEY,
+            migrate_1 INTEGER,
+            migrage_2 INTEGER
         )
     `).run();
 

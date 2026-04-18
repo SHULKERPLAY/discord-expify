@@ -145,15 +145,6 @@ class Lunar {
     };
 }
 
-//Use: const offset = convertGmtToSeconds("GMT+1");
-//In .toLocaleString() 'Etc/GMT+1' means GMT -1 and 'Etc/GMT-1' means GMT +1 so offset integer reverted
-function convertGmtToSeconds(gmtString) {
-    //replace GMT code with number. GMT return 0
-    const offsetValue = Number(gmtString.replace('GMT', ''));
-    //multiply on seconds in one hour
-    return -offsetValue * 3600;
-};
-
 //Integer randomizer
 //effective range: getRandomInt(-999999999999999, 999999999999999));
 //for date: getRandomInt(-62135596800000, 62135596800000)
@@ -164,64 +155,5 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-//getDateInt(year, 'month', day, hour, min, sec, ms). Month is required to be 'string'
-function getDateInt(year, month, day, hour, min, sec, ms) {
-    //null test
-    year = year ?? '0001';
-    month = month ?? '01';
-    day = day ?? '01';
-    hour = hour ?? '00';
-    min = min ?? '00';
-    sec = sec ?? '00';
-    ms = ms ?? '000';
-    //convert integers to strings
-    //This need for the date convertor to work. It length sensitive so if we use int '1' it needs to be '01'
-    if (year !== '0001') {
-        if (year < 10) {
-            year = `000${year}`
-        } else if (year < 100) {
-            year = `00${year}`
-        } else if (year < 1000) {
-            year = `0${year}`
-        }
-    }
-    //Month must be 'string'
-    if (month !== '01') {
-        if (month.length === 1) {
-        month = `0${month}`
-        }
-    }
-    if (day !== '01') {
-        if (day < 10) {
-        day = `0${day}`
-        }
-    }
-    if (hour !== '00') {
-        if (hour < 10) {
-            hour = `0${hour}`
-        }
-    }
-    if (min !== '00') {
-        if (min < 10) {
-            min = `0${min}`
-        }
-    }
-    if (sec !== '00') {
-        if (sec < 10) {
-            sec = `0${sec}`
-        }
-    }
-    if (ms !== '000') {
-        if (ms < 10) {
-            ms = `00${ms}`
-        } else if (ms < 100) {
-            ms = `0${ms}`
-        }
-    }
-    //datestring vars need to be filled with strings
-    const DateString = `${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}Z`;
-    return new Date(DateString).getTime();
-};
-
 //export
-module.exports = { convertGmtToSeconds, getRandomInt, getDateInt, getLoc, getL, shardStat, timeDiff, Lunar, XpLeveling };
+module.exports = { getRandomInt, getLoc, getL, shardStat, timeDiff, Lunar, XpLeveling };
