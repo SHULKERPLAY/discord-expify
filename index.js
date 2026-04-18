@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = 'indev 03';
+const corever = 'indev 04';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -7,7 +7,7 @@ const { Expify } = require('./interactions.js');
 const { timeDiff } = require('./functions.js');
 
 // Require the necessary discord.js classes
-const { Client, Events, GatewayIntentBits, ActivityType } = require('discord.js');
+const { Client, Events, GatewayIntentBits, ActivityType, MessageFlags} = require('discord.js');
 const { token } = require('./config.json');
 
 // Create a new client instance
@@ -32,6 +32,50 @@ client.on('interactionCreate', async (interaction) => {
         await Expify.about(interaction, lang, corever);
     } else if (interaction.commandName === 'invite') {
         await Expify.invite(interaction, lang);
+    } else if (interaction.commandName === 'expify') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        const sub = interaction.options.getSubcommand()
+        if (sub === 'get') {
+            await Expify.expifyGet(interaction, lang);
+        } else if (sub === 'toggle') {
+            await Expify.expifyToggle(interaction, lang);
+        } else if (sub === 'gain') {
+            await Expify.expifyGain(interaction, lang);
+        } else if (sub === 'announcement') {
+            await Expify.expifyAnnouncement(interaction, lang);
+        } else if (sub === 'warnings') {
+            await Expify.expifyWarnings(interaction, lang);
+        } else if (sub === 'reset') {
+            await Expify.expifyReset(interaction, lang);
+        } else if (sub === 'migrate') {
+            await Expify.expifyMigrate(interaction, lang);
+        }
+    } else if (interaction.commandName === 'rank') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        await Expify.rank(interaction, lang);
+    } else if (interaction.commandName === 'xp') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        const sub = interaction.options.getSubcommand()
+        if (sub === 'set') {
+            await Expify.xpSet(interaction, lang);
+        } else if (sub === 'calc') {
+            await Expify.xpCalc(interaction, lang);
+        } else if (sub === 'reset') {
+            await Expify.xpReset(interaction, lang);
+        }
+    } else if (interaction.commandName === 'noxp') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        const sub = interaction.options.getSubcommand()
+        if (sub === 'channel') {
+            await Expify.noxpCID(interaction, lang);
+        } else if (sub === 'user') {
+            await Expify.noxpUID(interaction, lang);
+        } else if (sub === 'role') {
+            await Expify.noxpRID(interaction, lang);
+        }
+    } else if (interaction.commandName === 'top') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        await Expify.top(interaction, lang);
     }
 });
 

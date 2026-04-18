@@ -8,7 +8,7 @@ const db = new Database(path.join(__dirname, 'expify.db'));
 db.pragma('journal_mode = WAL');
 
 // Save Database on process interruption
-const shutdown = () => {
+const dbSaveOnExit = () => {
     console.log('\n[Expify Database] Catch Interrupt... Saving database.');
     try {
         // Force checkpoint
@@ -24,14 +24,7 @@ const shutdown = () => {
     process.exit(0);
 };
 
-// Catch Ctrl + C
-process.on('SIGINT', shutdown);
-
-// Catch SIGTERM interrupt
-process.on('SIGTERM', shutdown);
-
-// Database Autosaving
-setInterval(() => {
+function dbSave() {
     try {
         // PASSIVE mode not blocking R/W operations
         db.pragma('wal_checkpoint(PASSIVE)');
@@ -39,7 +32,7 @@ setInterval(() => {
     } catch (err) {
         console.error('[Expify Database ERROR] Error while autosaving:', err);
     }
-}, 60 * 60 * 1000); // Per 1 hour
+}
 
 /** Restore missing columns
  * @param {string} tableName - Table Name ('users')
@@ -65,7 +58,8 @@ function checkColumns(tableName, columns) {
     console.log(`[ExpifyDB Column Check] ${tableName} checked in ${timeDiff(checkTime)}ms`)
 }
 
-const checkDB = () => {
+// Check database and add missing columns
+function checkDB() {
     // Check users table
     checkColumns('users', {
         'guild_id': 'TEXT',
@@ -85,6 +79,7 @@ const checkDB = () => {
         'video_xp_rate': 'INTEGER DEFAULT 20',
         'noxp_cid': "TEXT DEFAULT ''",
         'noxp_uid': "TEXT DEFAULT ''",
+        'noxp_rid': "TEXT DEFAULT ''",
         'announce_cid': "TEXT DEFAULT '0'",
         'admin_cid': "TEXT DEFAULT '0'",
         'reward_mode': 'INTEGER DEFAULT 0'
@@ -106,7 +101,7 @@ const checkDB = () => {
 };
 
 // Check and create Database
-const initializeDB = () => {
+function initializeDB() {
     const initTime = Date.now();
     // User progress (Composite primary key)
     db.prepare(`
@@ -123,6 +118,7 @@ const initializeDB = () => {
     /* Guilds settings
      * noxp_cid - ChannelsID with "," separator
      * noxp_uid - UsersID with "," separator 
+     * noxp_rid - RoleID with "," separator 
      * reward_mode: 0 - All Roles, 1 - Only Highest Reward Role */
     db.prepare(`
         CREATE TABLE IF NOT EXISTS guild_params (
@@ -135,6 +131,7 @@ const initializeDB = () => {
             video_xp_rate INTEGER DEFAULT 20,
             noxp_cid TEXT DEFAULT '',
             noxp_uid TEXT DEFAULT '',
+            noxp_rid TEXT DEFAULT '',
             announce_cid TEXT DEFAULT '0',
             admin_cid TEXT DEFAULT '0',
             reward_mode INTEGER DEFAULT 0
@@ -175,7 +172,4 @@ const initializeDB = () => {
     console.log(`[Expify Database] Database Init Completed (${timeDiff(initTime)}ms).`);
 };
 
-// Initialize start
-initializeDB();
-
-module.exports = { db };
+module.exports = { db, dbSaveOnExit, dbSave, initializeDB };

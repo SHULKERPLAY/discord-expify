@@ -3,7 +3,7 @@ const path = require('node:path');
 const { token } = require('./config.json');
 const { deployInteractions } = require('./deploy.js');
 const { timeDiff } = require('./functions.js');
-const { db } = require('./dbManager.js')
+const { db, dbSaveOnExit, dbSave, initializeDB } = require('./dbManager.js')
 
 const logPrefix = '[Expify Manager]';
 const startTime = Date.now();
@@ -14,6 +14,18 @@ const startTime = Date.now();
     await deployInteractions();
     console.log(`Deploy: ${timeDiff(deployTime)}ms`)
 })();
+
+// Database Init
+initializeDB()
+
+// Catch Ctrl + C
+process.on('SIGINT', dbSaveOnExit);
+
+// Catch SIGTERM interrupt
+process.on('SIGTERM', dbSaveOnExit);
+
+// Database Autosaving
+setInterval(dbSave, 60 * 60 * 1000); // Per 1 hour
 
 // Shard Manager
 const manager = new ShardingManager(path.join(__dirname, 'index.js'), {
@@ -35,9 +47,9 @@ manager.on('shardCreate', shard => {
         } else if (message.type === 'guildSetup') {
             const stmt = db.prepare(`
                 INSERT OR IGNORE INTO guild_params (
-                guild_id, voice_xp, voice_xp_rate, text_xp, text_xp_rate, 
-                video_xp, video_xp_rate, noxp_cid, noxp_uid, announce_cid, reward_mode
-                ) VALUES (?, 1, 10, 1, 10, 1, 10, '', '', '0', 0)
+                    guild_id, text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate,
+                    noxp_cid, noxp_uid, noxp_rid, announce_cid, admin_cid, reward_mode
+                ) VALUES (?, 1, 20, 1, 10, 1, 20, '', '', '', '0', '0', 0)
             `);
             stmt.run(message.guildId);
         };

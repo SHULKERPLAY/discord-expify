@@ -2,7 +2,6 @@
 const { Client, Events, Routes, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 const { ExpifyBuiler } = require('./builder.js');
-const { timeDiff } = require('./functions.js');
 
 // Deploys actual interactions once shard manager calls this function
 async function deployInteractions() {
