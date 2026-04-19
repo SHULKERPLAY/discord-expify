@@ -5,6 +5,14 @@ const { db } = require('./dbManager.js')
 // Discord User Interactions
 class Expify {
 
+    //Defaults
+    // Default Text XP gain
+    static defaultTextXP = 20;
+    // Default Voice XP gain
+    static defaultVoiceXP = 10;
+    // Default Video XP gain
+    static defaultVideoXP = 20;
+
     // Limits
     // Max NoXP Channels
     static maxNoxpCid = 10;
@@ -13,15 +21,28 @@ class Expify {
     // Max NoXP Roles
     static maxNoxpRid = 5;
 
-    /* Common method for getting all guild rewards for description field of embed message.
-     * This method returns Title and Desc so usage is typeName, data = Expify.getRewardsEmbedData(interaction, lang) */
-    static getRewardsEmbedData = function(interaction, lang) {
-        const typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
+    /** Update guild_params object in database
+     * @param {string} type - Column Name (example: 'text_xp')
+     * @param {number|string} value - New Value
+     * @param {string} guildId - GuildID */
+    static updateGuildParam(type, value, guildId) {
+        let result;
+        try {
+            const statement = db.prepare(`UPDATE guild_params SET ${type} = ? WHERE guild_id = ?`);
+            result = statement.run(value, guildId);
+        } catch (err) {
+            console.error(`[GuildParam] Error while updating object ${type} in ${guildId}:`, err)
+        }
 
+        return result.changes > 0; // Return true if updated
+    }
+
+    /* Common method for getting all guild rewards for description field of embed message.
+     * Usage is: data = Expify.getRewardsEmbedData(interaction, lang) */
+    static getRewardsEmbedData(interaction, lang) {
         let getRewards;
         let rewards;
         let data;
-
         try {
             // Get rewards for guild
             getRewards = db.prepare(`SELECT * FROM role_rewards WHERE guild_id = ?`);
@@ -29,7 +50,6 @@ class Expify {
         } catch (err) {
             console.error(`[GET] Error while loading guild rewards:`, err)
         }
-
         // Empty list when no data
         if (rewards.length === 0) {
             data = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
@@ -51,9 +71,9 @@ class Expify {
                 // Return a string
                 return `ID: ${row.id} [ ${conditionsText} ] ${(lang !== null) ? getL(lang, 'rewards') : 'Rewards'}: <@&${row.role_id}>`;
             }).join('\n');
-
-            return typeName, data;
         }
+
+        return data;
     }
 
     static ping = async function(interaction, client, lang) {
@@ -126,15 +146,16 @@ class Expify {
             }
 
             data = [
+                (lang !== null) ? `${getL(lang, 'gainmultipliers')}` : `Default multipliers per minute for all types are random: ~0.8x-1.2x.\n\nStreams gives user (0.25x)VideoXP while Webcam gives full VideoXP. VideoXP is also combined when webcam and steam enabled (So max video multiplier is 1.25x)`, 
                 (lang !== null) ? `## ⌨️ ${getL(lang, 'textxp')}` : '## ⌨️ Text XP',
                 `${(guildParams.text_xp > 0) ? '🟢' : '🔴'} ${(lang !== null) ? (getL(lang, 'textxp')) + ': ' + ((guildParams.text_xp > 0) ? getL(lang, 'enabled') : getL(lang, 'disabled')) : 'Text XP ' + ((guildParams.text_xp > 0) ? 'Enabled' : 'Disabled')}`,
-                `📈 ${guildParams.text_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'}`,
+                `📈 ${guildParams.text_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'} (${Math.floor(guildParams.text_xp_rate * 0.8)}-${Math.floor(guildParams.text_xp_rate * 1.2)}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'})`,
                 (lang !== null) ? `## 🎙️ ${getL(lang, 'voicexp')}` : '## 🎙️ Voice XP',
                 `${(guildParams.voice_xp > 0) ? '🟢' : '🔴'} ${(lang !== null) ? (getL(lang, 'voicexp')) + ': ' + ((guildParams.voice_xp > 0) ? getL(lang, 'enabled') : getL(lang, 'disabled')) : 'Voice XP ' + ((guildParams.voice_xp > 0) ? 'Enabled' : 'Disabled')}`,
-                `📈 ${guildParams.voice_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'}`,
+                `📈 ${guildParams.voice_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'} (${Math.floor(guildParams.voice_xp_rate * 0.8)}-${Math.floor(guildParams.voice_xp_rate * 1.2)}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'})`,
                 (lang !== null) ? `## 🎦 ${getL(lang, 'videoxp')}` : '## 🎦 Video XP',
                 `${(guildParams.video_xp > 0) ? '🟢' : '🔴'} ${(lang !== null) ? (getL(lang, 'videoxp')) + ': ' + ((guildParams.video_xp > 0) ? getL(lang, 'enabled') : getL(lang, 'disabled')) : 'Video XP ' + ((guildParams.video_xp > 0) ? 'Enabled' : 'Disabled')}`,
-                `📈 ${guildParams.video_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'}`,
+                `📈 ${guildParams.video_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'} (${Math.floor((guildParams.video_xp_rate * 0.8) * 0.25)}-${(Math.floor(guildParams.video_xp_rate * 1.2) * 1.25)}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'})`
             ]
             .join('\n');
         } else if (type === 'cid') {
@@ -244,13 +265,14 @@ class Expify {
             ]
             .join('\n');
         } else if (type === 'reward') {
-            typeName, data = Expify.getRewardsEmbedData(interaction, lang)
+            typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
+            data = Expify.getRewardsEmbedData(interaction, lang);
         }
 
         //Building response
         const guildName = interaction.guild?.name ?? undefined;
         const guildIcon = interaction.guild?.iconURL() ?? undefined;
-        const getEmbed = Lunar.createEmbed(`${typeName}`, data, null, 'ffc06e', guildName, guildIcon)
+        const getEmbed = Lunar.createEmbed(typeName, data, null, 'ffc06e', guildName, guildIcon)
         await Lunar.editReply(interaction, null, [getEmbed]);
         console.log(`GET ${type} of ${interaction.guildId} (${timeDiff(startTime)}ms)`)
     };
@@ -277,14 +299,29 @@ class Expify {
     };
 
     static expifyGain = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+        const startTime = Date.now();
+        const type = interaction.options.getString('type');
+        let quantity = interaction.options.getInteger('quantity');
+        let dbtype;
+        let status;
+
+        // To XP rate
+        if (type === 'text_xp') {dbtype = 'text_xp_rate'} else if (type === 'voice_xp') {dbtype = 'voice_xp_rate'} else if (type === 'video_xp') {dbtype = 'video_xp_rate'}
+
+        // Default if not provided
+        if (!quantity) { 
+            if (type === 'text_xp') {quantity = Expify.defaultTextXP} else if (type === 'voice_xp') {quantity = Expify.defaultVoiceXP} else if (type === 'video_xp') {quantity = Expify.defaultVideoXP}
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+
+        if (Expify.updateGuildParam(dbtype, quantity, interaction.guildId)) {
+            status = `🟢 ${(lang !== null) ? getL(lang, 'updated') : `Value successfuly updated!`}`
+        } else {
+            status = `🟡 ${(lang !== null) ? getL(lang, 'notupdated') : `Value was not updated!`}`
+        }
+
+        //Building response
+        await Lunar.editReply(interaction, status);
+        console.log(`Updated ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
     };
 
     static expifyAnnouncement = async function(interaction, lang) {
@@ -346,7 +383,7 @@ class Expify {
                     video_xp: 1, video_xp_rate: 20, noxp_cid: '', noxp_uid: '', noxp_rid: '', announce_cid: '0', admin_cid: '0', rank_cid: '0', reward_mode: 0
                 });
                 resetRewards.run(`${interaction.guildId}`)
-                console.log(`${resetRewards.changes} reward records deleted`)
+                console.log(`${resetRewards.changes ?? 0} reward records deleted`)
                 status = 'guildresetok'
             } catch (err) {
                 status = 'operationerr'

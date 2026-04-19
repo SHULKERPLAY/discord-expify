@@ -27,6 +27,21 @@ function addSimpleChoice(name, value, localeskey, localeprefix){
     return {name: name, value: value, name_localizations:(getLoc(localeskey, localeprefix))}
 }
 
+//XP Type option
+const addXpTypeOption = (description = ' ', descriptionKey = ' ', isrequired = false) => (option) => {
+    option.setName('type')
+    .setNameLocalizations(getLoc('arg.type'))
+    .setDescription(description)
+    .setDescriptionLocalizations(getLoc(descriptionKey))
+    .setRequired(isrequired)
+    .addChoices(
+        addSimpleChoice('Text XP', 'text_xp', 'textxp'),
+        addSimpleChoice('Voice XP', 'voice_xp', 'voicexp'),
+        addSimpleChoice('Video XP', 'video_xp', 'videoxp')
+    )
+    return option;
+};
+
 
 //export
-module.exports = { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice };
+module.exports = { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption };

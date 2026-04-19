@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { getLoc } = require('./functions.js');
-const { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice } = require('./helpers.js');
+const { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption } = require('./helpers.js');
 
 // Slash interactions builder
 class ExpifyBuiler {
@@ -70,17 +70,21 @@ class ExpifyBuiler {
             subcommand.setName('toggle')
             .setDescription('🔗 Toggles available types of XP for your server')
             .setDescriptionLocalizations(getLoc('expifytoggle', '🔗 '))
-            .addStringOption(option =>
-                option.setName('type')
-                .setNameLocalizations(getLoc('arg.type'))
-                .setDescription('Select which type of XP you want to toggle')
-                .setDescriptionLocalizations(getLoc('expifytogglesel'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('Text XP', 'text_xp', 'textxp'),
-                    addSimpleChoice('Voice XP', 'voice_xp', 'voicexp'),
-                    addSimpleChoice('Video XP', 'video_xp', 'videoxp')
-                )
+            .addStringOption(addXpTypeOption('Select which type of XP you want to toggle', 'expifytogglesel', true))
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('gain')
+            .setDescription('🔗 Change how many XP users get per minute')
+            .setDescriptionLocalizations(getLoc('expifygain', '🔗 '))
+            .addStringOption(addXpTypeOption('Select XP type to change', 'expifygaintype', true))
+            .addIntegerOption(option =>
+                option.setName('quantity')
+                .setNameLocalizations(getLoc('arg.quantity'))
+                .setDescription('Type integer in range 5-100xp/min. Blank to default')
+                .setDescriptionLocalizations(getLoc('expifygainquantity'))
+                .setMinValue(5)
+                .setMaxValue(100)
+                .setRequired(false)
             )
         )
 

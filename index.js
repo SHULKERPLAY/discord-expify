@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = 'indev 08';
+const corever = 'indev 09';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
