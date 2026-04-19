@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { getLoc } = require('./functions.js');
-const { setAvailable, setAdminsOnly, addPublicReply } = require('./helpers.js');
+const { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice } = require('./helpers.js');
 
 // Slash interactions builder
 class ExpifyBuiler {
@@ -34,8 +34,7 @@ class ExpifyBuiler {
                 .setDescriptionLocalizations(getLoc('confirmationyes'))
                 .setRequired(true)
                 .addChoices(
-                    {name: 'Yes', value: 'Yes', name_localizations:(getLoc('yes'))},
-                    {name: 'No', value: 'No', name_localizations:(getLoc('no'))}
+                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
                 )
             )
             .addStringOption(option =>
@@ -45,8 +44,25 @@ class ExpifyBuiler {
                 .setDescriptionLocalizations(getLoc('confirmationyes'))
                 .setRequired(true)
                 .addChoices(
-                    {name: 'No', value: 'No', name_localizations:(getLoc('no'))},
-                    {name: 'Yes', value: 'Yes', name_localizations:(getLoc('yes'))}
+                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+                )
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('get')
+            .setDescription('🔗 Get your server settings data')
+            .setDescriptionLocalizations(getLoc('expifyget', '🔗 '))
+            .addStringOption(option =>
+                option.setName('type')
+                .setNameLocalizations(getLoc('arg.type'))
+                .setDescription('Select which data to display')
+                .setDescriptionLocalizations(getLoc('expifygettype'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('XP Gaining', 'gain', 'xpgaining'),
+                    addSimpleChoice('Channels', 'cid', 'channels'),
+                    addSimpleChoice('NoXP entities', 'noxp', 'noxpentities'),
+                    addSimpleChoice('Rewards', 'reward', 'rewards')
                 )
             )
         )

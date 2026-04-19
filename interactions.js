@@ -4,6 +4,15 @@ const { db } = require('./dbManager.js')
 
 // Discord User Interactions
 class Expify {
+
+    // Limits
+    // Max NoXP Channels
+    static maxNoxpCid = 10;
+    // Max NoXP Users
+    static maxNoxpUid = 10;
+    // Max NoXP Roles
+    static maxNoxpRid = 5;
+
     static ping = async function(interaction, client, lang) {
         //Counting latency
         const latency = Date.now() - interaction.createdTimestamp;
@@ -47,14 +56,193 @@ class Expify {
     };
 
     static expifyGet = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+        const startTime = Date.now();
+        const type = interaction.options.getString('type');
+        let data;
+        let typeName;
+
+        if (type === 'gain') {
+            typeName = (lang !== null) ? `${getL(lang, 'xpgaining')}` : 'XP Gaining';
+
+            let getSettings;
+            let guildParams;
+            try {
+                // Get server settings
+                getSettings = db.prepare(`
+                    SELECT text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate
+                    FROM guild_params WHERE guild_id = ?
+                `);
+                guildParams = getSettings.get(`${interaction.guildId}`)
+            } catch (err) {
+                console.error(`[GET] Error while loading guild configuration:`, err)
+            }
+
+            if (!guildParams) {
+                console.log(`[GET] Guild ${interaction.guildId} not found in DB`);
+                return await Lunar.editReply(interaction, `${getL('ru', 'guildnotfound')}`)
+            }
+
+            data = [
+                (lang !== null) ? `## ⌨️ ${getL(lang, 'textxp')}` : '## ⌨️ Text XP',
+                `${(guildParams.text_xp > 0) ? '🟢' : '🔴'} ${(lang !== null) ? (getL(lang, 'textxp')) + ': ' + ((guildParams.text_xp > 0) ? getL(lang, 'enabled') : getL(lang, 'disabled')) : 'Text XP ' + ((guildParams.text_xp > 0) ? 'Enabled' : 'Disabled')}`,
+                `📈 ${guildParams.text_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'}`,
+                (lang !== null) ? `## 🎙️ ${getL(lang, 'voicexp')}` : '## 🎙️ Voice XP',
+                `${(guildParams.voice_xp > 0) ? '🟢' : '🔴'} ${(lang !== null) ? (getL(lang, 'voicexp')) + ': ' + ((guildParams.voice_xp > 0) ? getL(lang, 'enabled') : getL(lang, 'disabled')) : 'Voice XP ' + ((guildParams.voice_xp > 0) ? 'Enabled' : 'Disabled')}`,
+                `📈 ${guildParams.voice_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'}`,
+                (lang !== null) ? `## 🎦 ${getL(lang, 'videoxp')}` : '## 🎦 Video XP',
+                `${(guildParams.video_xp > 0) ? '🟢' : '🔴'} ${(lang !== null) ? (getL(lang, 'videoxp')) + ': ' + ((guildParams.video_xp > 0) ? getL(lang, 'enabled') : getL(lang, 'disabled')) : 'Video XP ' + ((guildParams.video_xp > 0) ? 'Enabled' : 'Disabled')}`,
+                `📈 ${guildParams.video_xp_rate}xp/${(lang !== null) ? getL(lang, 'minute') : 'minute'}`,
+            ]
+            .join('\n');
+        } else if (type === 'cid') {
+            typeName = (lang !== null) ? `${getL(lang, 'channels')}` : 'Channels';
+            let getSettings;
+            let guildParams;
+            try {
+                // Get server settings
+                getSettings = db.prepare(`
+                    SELECT announce_cid, admin_cid, rank_cid
+                    FROM guild_params WHERE guild_id = ?
+                `);
+                guildParams = getSettings.get(`${interaction.guildId}`)
+            } catch (err) {
+                console.error(`[GET] Error while loading guild configuration:`, err)
+            }
+
+            if (!guildParams) {
+                console.log(`[GET] Guild ${interaction.guildId} not found in DB`);
+                return await Lunar.editReply(interaction, `${getL('ru', 'guildnotfound')}`)
+            }
+
+            data = [
+                `📢 ${(lang !== null) ? getL(lang, 'announcementchannel') : 'Announcement Channel'} - ${(guildParams.announce_cid !== '0') ? `<#${guildParams.announce_cid}>` : `${(lang !== null) ? getL(lang, 'disabled') : 'Disabled'}`}`,
+                `⚠️ ${(lang !== null) ? getL(lang, 'warningchannel') : 'Admin Warnings Channel'} - ${(guildParams.admin_cid !== '0') ? `<#${guildParams.admin_cid}>` : `${(lang !== null) ? getL(lang, 'disabled') : 'Disabled'}`}`,
+                `📨 ${(lang !== null) ? getL(lang, 'rankchannel') : 'Public Rank Check Channel'} - ${(guildParams.rank_cid !== '0') ? `<#${guildParams.rank_cid}>` : `${(lang !== null) ? getL(lang, 'disabled') : 'Disabled'}`}`
+            ]
+            .join('\n');
+        } else if (type === 'noxp') {
+            typeName = (lang !== null) ? `${getL(lang, 'noxpentities')}` : 'NoXP entities';
+            let getSettings;
+            let guildParams;
+            try {
+                // Get server settings
+                getSettings = db.prepare(`
+                    SELECT noxp_cid, noxp_uid, noxp_rid
+                    FROM guild_params WHERE guild_id = ?
+                `);
+                guildParams = getSettings.get(`${interaction.guildId}`)
+            } catch (err) {
+                console.error(`[GET] Error while loading guild configuration:`, err)
+            }
+
+            if (!guildParams) {
+                console.log(`[GET] Guild ${interaction.guildId} not found in DB`);
+                return await Lunar.editReply(interaction, `${getL('ru', 'guildnotfound')}`)
+            }
+
+            // Channels Data
+            let cids;
+            let cidCnt;
+            if (guildParams.noxp_cid && guildParams.noxp_cid.trim() !== '') {
+                // Split by ',' and join with newline
+                cids = guildParams.noxp_cid
+                .split(',')
+                .map(id => id.trim()) // Erase spaces
+                .filter(id => id.length > 0) // Remove null
+                .map(id => `<#${id}>`) // Format mention
+                .join('\n');
+                cidCnt = guildParams.noxp_cid.split(',').length;
+            } else {
+                cids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+                cidCnt = 0
+            }
+
+            // Users Data
+            let uids;
+            let uidCnt;
+            if (guildParams.noxp_uid && guildParams.noxp_uid.trim() !== '') {
+                // Split by ',' and join with newline
+                uids = guildParams.noxp_uid
+                .split(',')
+                .map(id => id.trim()) // Erase spaces
+                .filter(id => id.length > 0) // Remove null
+                .map(id => `<@${id}>`) // Format mention
+                .join('\n');
+                uidCnt = guildParams.noxp_uid.split(',').length;
+            } else {
+                uids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+                uidCnt = 0
+            }
+
+            // Roles Data
+            let rids;
+            let ridCnt;
+            if (guildParams.noxp_rid && guildParams.noxp_rid.trim() !== '') {
+                // Split by ',', make mentionable format and join with newline
+                rids = guildParams.noxp_rid
+                .split(',')
+                .map(id => id.trim()) // Erase spaces
+                .filter(id => id.length > 0) // Remove null
+                .map(id => `<@&${id}>`) // Format mention
+                .join('\n');
+                ridCnt = guildParams.noxp_rid.split(',').length;
+            } else {
+                rids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+                ridCnt = 0
+            }
+
+            data = [
+                `## 💬 ${(lang !== null) ? getL(lang, 'channels') : 'Channels'} (${cidCnt}/${Expify.maxNoxpCid})`,
+                cids,
+                `## 👥 ${(lang !== null) ? getL(lang, 'users') : 'Users'} (${uidCnt}/${Expify.maxNoxpUid})`,
+                uids,
+                `## 🏷️ ${(lang !== null) ? getL(lang, 'roles') : 'Roles'} (${ridCnt}/${Expify.maxNoxpRid})`,
+                rids
+            ]
+            .join('\n');
+        } else if (type === 'reward') {
+            typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
+
+            let getRewards;
+            let rewards;
+            try {
+                // Get rewards for guild
+                getRewards = db.prepare(`SELECT * FROM role_rewards WHERE guild_id = ?`);
+                rewards = getRewards.all(`${interaction.guildId}`)
+            } catch (err) {
+                console.error(`[GET] Error while loading guild rewards:`, err)
+            }
+
+            // Empty list when no data
+            if (rewards.length === 0) {
+                data = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+            } else {
+                // Formatting data
+                data = rewards.map(row => {
+                    // Split XP types
+                    const [textXp, voiceXp, videoXp] = row.xp_required.split(',').map(Number);
+                    
+                    // Compile an array only if condition > 0
+                    const conditions = [];
+                    if (textXp > 0) conditions.push(`⌨️: ${XpLeveling.getLevel(textXp)}LVL`);
+                    if (voiceXp > 0) conditions.push(`🎙️: ${XpLeveling.getLevel(voiceXp)}LVL`);
+                    if (videoXp > 0) conditions.push(`🎦: ${XpLeveling.getLevel(videoXp)}LVL`);
+
+                    // Join conditions
+                    const conditionsText = conditions.join(', ');
+
+                    // Return a string
+                    return `ID: ${row.id} [ ${conditionsText} ] ${(lang !== null) ? getL(lang, 'rewards') : 'Rewards'}: <@&${row.role_id}>`;
+                }).join('\n');
+            }
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+
+        //Building response
+        const guildName = interaction.guild?.name ?? undefined;
+        const guildIcon = interaction.guild?.iconURL() ?? undefined;
+        const getEmbed = Lunar.createEmbed(`${typeName}`, data, null, 'ffc06e', guildName, guildIcon)
+        await Lunar.editReply(interaction, null, [getEmbed]);
+        console.log(`GET ${type} of ${interaction.guildId} (${timeDiff(startTime)}ms)`)
     };
     
     static expifyToggle = async function(interaction, lang) {

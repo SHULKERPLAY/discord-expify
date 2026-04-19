@@ -90,7 +90,6 @@ function checkDB() {
     checkColumns('role_rewards', {
         'guild_id': 'TEXT',
         'xp_required': 'TEXT',
-        'xp_class': 'INTEGER',
         'role_id': 'TEXT'
     });
 
@@ -141,17 +140,12 @@ function initializeDB() {
     `).run();
 
     /* Role rewards data (xp_required: 'text,voice,video').
-     * xp_class need to placed with rule creation. 
-     * xp_class 0 means that only single XP type used to give a reward. (xp_required: '0,500,0' or '500,0,0').
-     * xp_class 1 means that rule contains multiple conditions (xp_required: '200,500,400' or '500,0,600').
-     * Guild setting 'reward_mode: 1' will ignore rules with 'xp_class: 1'.
      * Users can only recreate rule. Modifying restricted. */
     db.prepare(`
         CREATE TABLE IF NOT EXISTS role_rewards (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             guild_id TEXT,
             xp_required TEXT,
-            xp_class INTEGER,
             role_id TEXT
         )
     `).run();

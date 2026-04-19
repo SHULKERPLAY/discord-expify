@@ -19,6 +19,7 @@ const locale = loadlocale();
 
 //Get all locales on keyword
 function getLoc(pathStr, prefix = '') {
+    if (!pathStr) { return undefined };
     const result = {};
     const keys = pathStr.split('.'); // Splits requests like (arg.year)
 
@@ -93,25 +94,30 @@ class XpLeveling {
 
     // Get level int from xp int
     static getLevel(xp = 0) {
+        xp = typeof xp === 'string' ? Number(xp) : xp;
         if (xp < (this.A + this.B)) return 0;
         // Solve via discriminant: (-b + sqrt(b^2 - 4ac)) / 2a
         const level = (Math.sqrt(Math.pow(this.B, 2) + 4 * this.A * xp) - this.B) / (2 * this.A);
         return Math.floor(level);
     }
+    
 
     // Get required cumulative xp int for level int
     static getXpForLevel(level = 0) {
+        level = typeof level === 'string' ? Number(level) : level;
         if (level <= 0) return 0;
         return this.A * Math.pow(level, 2) + this.B * level;
     }
 
     // Get total required xp int to get from level to level+1 
     static getXpDiff(level = 0) {
+        level = typeof level === 'string' ? Number(level) : level;
         return this.getXpForLevel(level + 1) - this.getXpForLevel(level);
     }
 
     // Get progress int from start of current level to current xp int
     static getLevelProgress(xp = 0) {
+        xp = typeof xp === 'string' ? Number(xp) : xp;
         return (xp) - (this.getXpForLevel(this.getLevel(xp)));
     }
 }

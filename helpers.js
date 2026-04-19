@@ -17,5 +17,16 @@ const addPublicReply = () => (option) => {
     return option;
 };
 
+/** Simplified code to create .addChoices objects
+ * @param {string} name - Default Displayed name
+ * @param {string} value - Coded value of choice
+ * @param {string} localeskey - name_localizations parsed by 'key'
+ * @param {string} localeprefix - Prefix added to Displayed name in all locales
+ * @returns {object} Object{} of choice */
+function addSimpleChoice(name, value, localeskey, localeprefix){
+    return {name: name, value: value, name_localizations:(getLoc(localeskey, localeprefix))}
+}
+
+
 //export
-module.exports = { setAvailable, setAdminsOnly, addPublicReply };
+module.exports = { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice };
