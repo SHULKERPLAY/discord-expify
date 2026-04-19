@@ -45,13 +45,17 @@ manager.on('shardCreate', shard => {
         } else if (message.type === 'updateSetting') { // Database server: Instant settings write
             // TBD
         } else if (message.type === 'guildSetup') {
-            const stmt = db.prepare(`
-                INSERT OR IGNORE INTO guild_params (
-                    guild_id, text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate,
-                    noxp_cid, noxp_uid, noxp_rid, announce_cid, admin_cid, reward_mode
-                ) VALUES (?, 1, 20, 1, 10, 1, 20, '', '', '', '0', '0', 0)
-            `);
-            stmt.run(message.guildId);
+            try {
+                const stmt = db.prepare(`
+                    INSERT OR IGNORE INTO guild_params (
+                        guild_id, text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate,
+                        noxp_cid, noxp_uid, noxp_rid, announce_cid, admin_cid, rank_cid, reward_mode
+                    ) VALUES (?, 1, 20, 1, 10, 1, 20, '', '', '', '0', '0', '0', 0)
+                `);
+                stmt.run(message.guildId);
+            } catch (err) {
+                console.error(`${logPrefix} Error while processing guildSetup signal:`, err)
+            }
         };
         console.log(`${message.type} (${timeDiff(messageTime)}ms)`)
     });

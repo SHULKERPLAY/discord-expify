@@ -51,6 +51,37 @@ function timeDiff(time1, time2) {
     return (time2 ?? Date.now()) - (time1 ?? Date.now())
 }
 
+/** Creates text progressbar
+ * @param {number} percent - Fill percent (0-100)
+ * @param {number} length - Progressbar length in symbols
+ * @returns {string} String type ▓▓▓░░░ */
+function renderProgressBar(percent, length) {
+    // Limit percent for safe calculation
+    const safePercent = Math.min(Math.max(percent, 0), 100);
+    
+    // Count filled symbols
+    const filledLength = Math.round((safePercent / 100) * length);
+    
+    // Count empty symbols
+    const emptyLength = length - filledLength;
+
+    // Compile string: repeating symbols calculated times
+    return "▓".repeat(filledLength) + "░".repeat(emptyLength);
+}
+
+/** Calculate percent
+ * @param {number} current Current value
+ * @param {number} required - Needed value to 100%
+ * @returns {number} Percent integer 0-100 */
+function calculatePercentage(current, required) {
+    if (required <= 0) return 0; // Zero or negative Division protect
+    
+    const percent = (current / required) * 100;
+    
+    // Round result and limit to 100
+    return Math.min(Math.max(Math.round(percent), 0), 100);
+}
+
 /** Class with functions to perform leveling calculations.
 * With current A and B multipliers recomended maximum XP is 160280000 or 1000 LVL.
 * XP gain modification allowed only in range 5-100xp per minute. Default is 10xp.
@@ -127,7 +158,7 @@ class Lunar {
     };
 
     //Embed constructor
-    static createEmbed(title, data, footer, color) {
+    static createEmbed(title, data, footer, color, author, authorIcon) {
         // const authoricon = 'https://lunarcreators.ru/discordiconmini.webp'
         // const authorurl = 'https://discord.com'
         
@@ -141,6 +172,10 @@ class Lunar {
             // .setAuthor({ name: 'Expify', iconURL: authoricon, url: authorurl })
             // .setTimestamp()
             .setFooter({ text: footer || 'С любовью, @Expify#7920' });
+
+            // Author field only if specified
+            if (author) { newembed.setAuthor({ name: author, iconURL: authorIcon || undefined })}
+
         return newembed;
     };
 }
@@ -156,4 +191,4 @@ function getRandomInt(min, max) {
 };
 
 //export
-module.exports = { getRandomInt, getLoc, getL, shardStat, timeDiff, Lunar, XpLeveling };
+module.exports = { getRandomInt, getLoc, getL, shardStat, timeDiff, renderProgressBar, calculatePercentage, Lunar, XpLeveling };

@@ -82,6 +82,7 @@ function checkDB() {
         'noxp_rid': "TEXT DEFAULT ''",
         'announce_cid': "TEXT DEFAULT '0'",
         'admin_cid': "TEXT DEFAULT '0'",
+        'rank_cid': "TEXT DEFAULT '0'",
         'reward_mode': 'INTEGER DEFAULT 0'
     });
 
@@ -134,6 +135,7 @@ function initializeDB() {
             noxp_rid TEXT DEFAULT '',
             announce_cid TEXT DEFAULT '0',
             admin_cid TEXT DEFAULT '0',
+            rank_cid TEXT DEFAULT '0',
             reward_mode INTEGER DEFAULT 0
         )
     `).run();

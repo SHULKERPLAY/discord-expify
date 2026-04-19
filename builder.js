@@ -51,12 +51,26 @@ class ExpifyBuiler {
             )
         )
 
+    static rankcmd = new SlashCommandBuilder()
+        .setName('rank')
+        .setDescription('🔗 Check your or another user rank')
+        .setDescriptionLocalizations(getLoc('rankcmd', '🔗 '))
+        .addUserOption(option =>
+            option.setName('user')
+            .setNameLocalizations(getLoc('arg.user'))
+            .setDescription('Выберите пользователя, ранг которого вы хотите узнать')
+            .setDescriptionLocalizations(getLoc('rankuser'))
+            .setRequired(false)
+        )
+        .addBooleanOption(addPublicReply())
+    
     // Set default interactions access rules
     static {
         setAvailable(this.ping)
         setAdminsOnly(this.about)
         setAdminsOnly(this.invite)
         setAdminsOnly(this.expifycmd)
+        setAdminsOnly(this.rankcmd)
     }
 }; 
 
