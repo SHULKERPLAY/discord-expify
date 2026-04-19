@@ -13,6 +13,49 @@ class Expify {
     // Max NoXP Roles
     static maxNoxpRid = 5;
 
+    /* Common method for getting all guild rewards for description field of embed message.
+     * This method returns Title and Desc so usage is typeName, data = Expify.getRewardsEmbedData(interaction, lang) */
+    static getRewardsEmbedData = function(interaction, lang) {
+        const typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
+
+        let getRewards;
+        let rewards;
+        let data;
+
+        try {
+            // Get rewards for guild
+            getRewards = db.prepare(`SELECT * FROM role_rewards WHERE guild_id = ?`);
+            rewards = getRewards.all(`${interaction.guildId}`)
+        } catch (err) {
+            console.error(`[GET] Error while loading guild rewards:`, err)
+        }
+
+        // Empty list when no data
+        if (rewards.length === 0) {
+            data = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+        } else {
+            // Formatting data
+            data = rewards.map(row => {
+                // Split XP types
+                const [textXp, voiceXp, videoXp] = row.xp_required.split(',').map(Number);
+                
+                // Compile an array only if condition > 0
+                const conditions = [];
+                if (textXp > 0) conditions.push(`⌨️: ${XpLeveling.getLevel(textXp)}LVL`);
+                if (voiceXp > 0) conditions.push(`🎙️: ${XpLeveling.getLevel(voiceXp)}LVL`);
+                if (videoXp > 0) conditions.push(`🎦: ${XpLeveling.getLevel(videoXp)}LVL`);
+
+                // Join conditions
+                const conditionsText = conditions.join(', ');
+
+                // Return a string
+                return `ID: ${row.id} [ ${conditionsText} ] ${(lang !== null) ? getL(lang, 'rewards') : 'Rewards'}: <@&${row.role_id}>`;
+            }).join('\n');
+
+            return typeName, data;
+        }
+    }
+
     static ping = async function(interaction, client, lang) {
         //Counting latency
         const latency = Date.now() - interaction.createdTimestamp;
@@ -201,40 +244,7 @@ class Expify {
             ]
             .join('\n');
         } else if (type === 'reward') {
-            typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
-
-            let getRewards;
-            let rewards;
-            try {
-                // Get rewards for guild
-                getRewards = db.prepare(`SELECT * FROM role_rewards WHERE guild_id = ?`);
-                rewards = getRewards.all(`${interaction.guildId}`)
-            } catch (err) {
-                console.error(`[GET] Error while loading guild rewards:`, err)
-            }
-
-            // Empty list when no data
-            if (rewards.length === 0) {
-                data = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
-            } else {
-                // Formatting data
-                data = rewards.map(row => {
-                    // Split XP types
-                    const [textXp, voiceXp, videoXp] = row.xp_required.split(',').map(Number);
-                    
-                    // Compile an array only if condition > 0
-                    const conditions = [];
-                    if (textXp > 0) conditions.push(`⌨️: ${XpLeveling.getLevel(textXp)}LVL`);
-                    if (voiceXp > 0) conditions.push(`🎙️: ${XpLeveling.getLevel(voiceXp)}LVL`);
-                    if (videoXp > 0) conditions.push(`🎦: ${XpLeveling.getLevel(videoXp)}LVL`);
-
-                    // Join conditions
-                    const conditionsText = conditions.join(', ');
-
-                    // Return a string
-                    return `ID: ${row.id} [ ${conditionsText} ] ${(lang !== null) ? getL(lang, 'rewards') : 'Rewards'}: <@&${row.role_id}>`;
-                }).join('\n');
-            }
+            typeName, data = Expify.getRewardsEmbedData(interaction, lang)
         }
 
         //Building response
@@ -246,14 +256,24 @@ class Expify {
     };
     
     static expifyToggle = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+        const startTime = Date.now();
+        const type = interaction.options.getString('type');
+        try {
+            // Invert value
+            const update = db.prepare(`UPDATE guild_params SET ${type} = 1 - ${type} WHERE guild_id = ?`);
+            update.run(interaction.guildId);
+        } catch (err) {
+            console.error(`[TOGGLE] Error while toggling xp on ${interaction.guildId}:`, err)
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        // Get new state for reply. Returns [object Object] so we need to get new state as { [type]: newState } to get integer
+        const { [type]: newState } = db.prepare(`SELECT ${type} FROM guild_params WHERE guild_id = ?`).get(interaction.guildId);
+        
+        //Building response
+        let ltype;
+        if (type === 'text_xp') {ltype = 'textxp'} else if (type === 'voice_xp') {ltype = 'voicexp'} else if (type === 'video_xp') {ltype = 'videoxp'}
+        const replycontent = `${(newState > 0) ? '🟢' : '🔴'} ${(lang !== null) ? getL(lang, ltype) : getL('ru', ltype)} ${(newState > 0) ? `${(lang !== null) ? getL(lang, 'enabled') : 'Enabled'}` : `${(lang !== null) ? getL(lang, 'disabled') : 'Disabled'}`}!`
+        await Lunar.editReply(interaction, replycontent);
+        console.log(`Toggle ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
     };
 
     static expifyGain = async function(interaction, lang) {
@@ -329,7 +349,7 @@ class Expify {
                 console.log(`${resetRewards.changes} reward records deleted`)
                 status = 'guildresetok'
             } catch (err) {
-                status = 'guildreseterr'
+                status = 'operationerr'
                 console.error(`Error while resetting Guild ${interaction.guildId}:`, err)
             }
 
@@ -446,7 +466,7 @@ class Expify {
         const decription = [
             guildParams.text_xp > 0 ? `⌨️ (${userData.text_xp}xp) **${textlevel}LVL** [ ${renderProgressBar(textpercent, 20)} ] ${textcurrent}/${textmax} (${textpercent}%)` : null,
             guildParams.voice_xp > 0 ? `🎙️ (${userData.voice_xp}xp) **${voicelevel}LVL** [ ${renderProgressBar(voicepercent, 20)} ] ${voicecurrent}/${voicemax} (${voicepercent}%)` : null,
-            guildParams.video_xp > 0 ? `🎦 (${userData.video_xp}xp) **${videolevel}LVL** [ ${renderProgressBar(videopercent, 20)} ] ${videocurrent}/${videomax} (${videopercent}%)` : null
+            guildParams.video_xp > 0 ? `🎦 (${userData.video_xp}xp) **${videolevel}LVL** [ ${renderProgressBar(videopercent, 20)} ] ${videocurrent}/${videomax} (${videopercent}%)` : null,
             (guildParams.text_xp < 1 && guildParams.voice_xp < 1 && guildParams.video_xp < 1) ? `${getL('ru', 'rankdisabled')}` : null
         ]
         .filter(line => line !== null) // Removing null elements

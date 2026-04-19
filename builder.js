@@ -66,6 +66,23 @@ class ExpifyBuiler {
                 )
             )
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('toggle')
+            .setDescription('🔗 Toggles available types of XP for your server')
+            .setDescriptionLocalizations(getLoc('expifytoggle', '🔗 '))
+            .addStringOption(option =>
+                option.setName('type')
+                .setNameLocalizations(getLoc('arg.type'))
+                .setDescription('Select which type of XP you want to toggle')
+                .setDescriptionLocalizations(getLoc('expifytogglesel'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Text XP', 'text_xp', 'textxp'),
+                    addSimpleChoice('Voice XP', 'voice_xp', 'voicexp'),
+                    addSimpleChoice('Video XP', 'video_xp', 'videoxp')
+                )
+            )
+        )
 
     static rankcmd = new SlashCommandBuilder()
         .setName('rank')

@@ -6,6 +6,8 @@ const db = new Database(path.join(__dirname, 'expify.db'));
 
 // Enable WAL mode for multiple r/w operations
 db.pragma('journal_mode = WAL');
+// Set SQL Timeout
+db.pragma('busy_timeout = 15000');
 
 // Save Database on process interruption
 const dbSaveOnExit = () => {

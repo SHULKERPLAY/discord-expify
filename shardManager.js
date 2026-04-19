@@ -42,8 +42,6 @@ manager.on('shardCreate', shard => {
         const messageTime = Date.now()
         if (message.type === 'bulkXpUpdate') { // Database server: Bulk XP incremention from array
             // TBD
-        } else if (message.type === 'updateSetting') { // Database server: Instant settings write
-            // TBD
         } else if (message.type === 'guildSetup') {
             try {
                 const stmt = db.prepare(`
