@@ -105,6 +105,36 @@ class ExpifyBuiler {
             .setDescriptionLocalizations(getLoc('expifyrank', '🔗 '))
             .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('migrate-help')
+            .setDescription('🔗 RECOMENDED TO READ IF YOU WANT TO USE (/expify migrate)!')
+            .setDescriptionLocalizations(getLoc('expifymigratehelpdesc', '🔗 '))
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('migrate')
+            .setDescription('🔗 Set XP according to existing rewards to all users (Read /expify migrate-help first)')
+            .setDescriptionLocalizations(getLoc('expifymigratedesc', '🔗 '))
+            .addStringOption(option =>
+                option.setName('confirmation_1')
+                .setNameLocalizations(getLoc('arg.confirmation_1'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
+                )
+            )
+            .addStringOption(option =>
+                option.setName('confirmation_2')
+                .setNameLocalizations(getLoc('arg.confirmation_2'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+                )
+            )
+        )
 
     static rewardcmd = new SlashCommandBuilder()
         .setName('reward')

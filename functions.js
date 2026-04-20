@@ -151,12 +151,13 @@ class Lunar {
     };
 
     // Use while editing reply: editReply(interaction, 'If text not needed type null', [embeds]); // Embeds can be null
-    static editReply = async function(interaction, replycontent, embedcontent) {
+    static editReply = async function(interaction, replycontent, embedcontent, suppressembeds) {
         const replydata = (replycontent || '').length > 1900 ? replycontent.substring(0, 1900) + "...\n```\nОтображаемый контент превышает 1900 символов!" : replycontent;
         try {
             await interaction.editReply({
                 content: replydata || '',
                 embeds: embedcontent || [],
+                flags: suppressembeds ? [MessageFlags.SuppressEmbeds] : [],
             });
         } catch (error) {
             console.error('Error while editing message:', error.message)

@@ -24,6 +24,8 @@ class Expify {
     static maxNoxpRid = 5;
     // Maximum XP
     static maxUserXp = 160280000;
+    // Migrate cooldown
+    static cooldownMigrate = 3600000 * 24 * 7;
 
     /** Update guild_params object in database
      * @param {string} type - Column Name (example: 'text_xp')
@@ -79,6 +81,29 @@ class Expify {
 
         return data;
     }
+    
+    static fetchMembersWithRetry = async function(guild, retries = 5) {
+        try {
+            return await guild.members.fetch({ force: true, time: 120000 });
+        } catch (error) {
+            // Check if ratelimited
+            if (error.status === 429 || error.message.includes('rate limited')) {
+                // Taking retry after or default retry
+                const waitTime = (error.data.retry_after || 1) * 1000;
+
+                console.warn(`[RateLimit] Limit reached. Waiting ${waitTime}ms...`);
+
+                // Waiting
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+
+                // Retry
+                if (retries > 0) {
+                    return await Expify.fetchMembersWithRetry(guild, retries - 1);
+                }
+            }
+            console.error(`Error while fetching members of ${guild.id}:`, error.message); // If no left retries or other error
+        }
+    }
 
     static ping = async function(interaction, client, lang) {
         //Counting latency
@@ -127,6 +152,7 @@ class Expify {
         const type = interaction.options.getString('type');
         let data;
         let typeName;
+        let footer;
 
         if (type === 'gain') {
             typeName = (lang !== null) ? `${getL(lang, 'xpgaining')}` : 'XP Gaining';
@@ -270,13 +296,13 @@ class Expify {
             .join('\n');
         } else if (type === 'reward') {
             typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
+            footer = `⌨️: ${(lang !== null) ? getL(lang, 'textxp') : 'Text XP'}, 🎙️: ${(lang !== null) ? getL(lang, 'voicexp') : 'Voice XP'}, 🎦: ${(lang !== null) ? getL(lang, 'videoxp') : 'Video XP'}`
             data = Expify.getRewardsEmbedData(interaction, lang);
         }
 
         //Building response
         const guildName = interaction.guild?.name ?? undefined;
         const guildIcon = interaction.guild?.iconURL() ?? undefined;
-        const footer = `⌨️: ${(lang !== null) ? getL(lang, 'textxp') : 'Text XP'}, 🎙️: ${(lang !== null) ? getL(lang, 'voicexp') : 'Voice XP'}, 🎦: ${(lang !== null) ? getL(lang, 'videoxp') : 'Video XP'}`
         const getEmbed = Lunar.createEmbed(typeName, data, footer, 'ffc06e', guildName, guildIcon)
         console.log(`GET ${type} of ${interaction.guildId}(${timeDiff(startTime)}ms)`)
         await Lunar.editReply(interaction, null, [getEmbed]);
@@ -293,7 +319,10 @@ class Expify {
             console.error(`[TOGGLE] Error while toggling xp on ${interaction.guildId}:`, err)
         }
         // Get new state for reply. Returns [object Object] so we need to get new state as { [type]: newState } to get integer
-        const { [type]: newState } = db.prepare(`SELECT ${type} FROM guild_params WHERE guild_id = ?`).get(interaction.guildId);
+        const newState = db.prepare(`SELECT ${type} FROM guild_params WHERE guild_id = ?`).get(interaction.guildId);
+
+        // Check if undefined
+        if (!newState) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) }
         
         //Building response
         let ltype;
@@ -374,71 +403,204 @@ class Expify {
 
     static expifyReset = async function(interaction, lang) {
         let status;
-        if (interaction.options.getString('confirmation_1') === 'Yes' && interaction.options.getString('confirmation_2') === 'Yes') {
-            const resetTime = Date.now();
-            console.log(`Defaulting Guild ${interaction.guildId}`)
-            try {
-                const setDefault = db.prepare(`
-                    INSERT INTO guild_params (
-                        guild_id, text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate,
-                        noxp_cid, noxp_uid, noxp_rid, announce_cid, admin_cid, rank_cid, reward_mode
-                    ) VALUES (
-                        @guild_id, @text_xp, @text_xp_rate, @voice_xp, @voice_xp_rate, @video_xp, @video_xp_rate,
-                        @noxp_cid, @noxp_uid, @noxp_rid, @announce_cid, @admin_cid, @rank_cid, @reward_mode
-                    )
-                    ON CONFLICT(guild_id) DO UPDATE SET
-                        text_xp = excluded.text_xp,
-                        text_xp_rate = excluded.text_xp_rate,
-                        voice_xp = excluded.voice_xp,
-                        voice_xp_rate = excluded.voice_xp_rate,
-                        video_xp = excluded.video_xp,
-                        video_xp_rate = excluded.video_xp_rate,
-                        noxp_cid = excluded.noxp_cid,
-                        noxp_uid = excluded.noxp_uid,
-                        noxp_rid = excluded.noxp_rid,
-                        announce_cid = excluded.announce_cid,
-                        admin_cid = excluded.admin_cid,
-                        rank_cid = excluded.rank_cid,
-                        reward_mode = excluded.reward_mode
-                `);
 
-                const resetRewards = db.prepare(`DELETE FROM role_rewards WHERE guild_id = ?`)
+        // Check confirmation
+        if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
 
-                setDefault.run({
-                    guild_id: `${interaction.guildId ?? 0}`, text_xp: 1, text_xp_rate: 20, voice_xp: 1, voice_xp_rate: 10,
-                    video_xp: 1, video_xp_rate: 20, noxp_cid: '', noxp_uid: '', noxp_rid: '', announce_cid: '0', admin_cid: '0', rank_cid: '0', reward_mode: 0
-                });
-                resetRewards.run(`${interaction.guildId}`)
-                console.log(`${resetRewards.changes ?? 0} reward records deleted`)
-                status = 'guildresetok'
-            } catch (err) {
-                status = 'operationerr'
-                console.error(`Error while resetting Guild ${interaction.guildId}:`, err)
-            }
+        const resetTime = Date.now();
+        console.log(`Defaulting Guild ${interaction.guildId}`)
+        try {
+            const setDefault = db.prepare(`
+                INSERT INTO guild_params (
+                    guild_id, text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate,
+                    noxp_cid, noxp_uid, noxp_rid, announce_cid, admin_cid, rank_cid, reward_mode
+                ) VALUES (
+                    @guild_id, @text_xp, @text_xp_rate, @voice_xp, @voice_xp_rate, @video_xp, @video_xp_rate,
+                    @noxp_cid, @noxp_uid, @noxp_rid, @announce_cid, @admin_cid, @rank_cid, @reward_mode
+                )
+                ON CONFLICT(guild_id) DO UPDATE SET
+                    text_xp = excluded.text_xp,
+                    text_xp_rate = excluded.text_xp_rate,
+                    voice_xp = excluded.voice_xp,
+                    voice_xp_rate = excluded.voice_xp_rate,
+                    video_xp = excluded.video_xp,
+                    video_xp_rate = excluded.video_xp_rate,
+                    noxp_cid = excluded.noxp_cid,
+                    noxp_uid = excluded.noxp_uid,
+                    noxp_rid = excluded.noxp_rid,
+                    announce_cid = excluded.announce_cid,
+                    admin_cid = excluded.admin_cid,
+                    rank_cid = excluded.rank_cid,
+                    reward_mode = excluded.reward_mode
+            `);
 
-            console.log(`Reset Guild ${interaction.guildId} (${timeDiff(resetTime)}ms)`)
-        } else {status = 'guildresetabort'}
+            const resetRewards = db.prepare(`DELETE FROM role_rewards WHERE guild_id = ?`)
+
+            setDefault.run({
+                guild_id: `${interaction.guildId ?? 0}`, text_xp: 1, text_xp_rate: 20, voice_xp: 1, voice_xp_rate: 10,
+                video_xp: 1, video_xp_rate: 20, noxp_cid: '', noxp_uid: '', noxp_rid: '', announce_cid: '0', admin_cid: '0', rank_cid: '0', reward_mode: 0
+            });
+            resetRewards.run(`${interaction.guildId}`)
+            status = 'guildresetok'
+        } catch (err) {
+            status = 'operationerr'
+            console.error(`Error while resetting Guild ${interaction.guildId}:`, err)
+        }
+
+        console.log(`Reset Guild ${interaction.guildId} (${timeDiff(resetTime)}ms)`)
 
         //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, `${status}`)}`;
-        } else {
-            replycontent = `${getL('ru', `${status}`)}`;
-        }
+        let replycontent = `${getL(lang ?? 'ru', `${status}`)}`;
         await Lunar.editReply(interaction, replycontent);
     };
 
     static expifyMigrate = async function(interaction, lang) {
+        // Check confirmation
+        if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
+
+        const startTime = Date.now();
+
+        // Check if cooldown
+        const migrate = db.prepare(`SELECT migrate_1 FROM guild_limits WHERE guild_id = ?`).get(interaction.guildId);
+        const lastMigration = migrate?.migrate_1 ?? 0;
+        if (lastMigration && lastMigration + Expify.cooldownMigrate > startTime) { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'cooldowndetected')} <t:${Math.floor((lastMigration + Expify.cooldownMigrate) / 1000)}:F>`); }
+
+        const guildId = interaction.guildId;
+        let errorcnt = 0;
+        let rewards;
+        let rewardsMap;
+        let members;
+
+        // Get all guild rewards
+        try {  
+            rewards = db.prepare("SELECT role_id, xp_required FROM role_rewards WHERE guild_id = ?").all(guildId);
+        } catch (err) {
+            console.error(`[MIGRATE] Error while reading role_rewards ${guildId}:`, err);
+            errorcnt = ++errorcnt;
+        }
+        
+        // Check if no rewards
+        if (rewards.length === 0) {
+            return await Lunar.editReply(interaction, `❌ ${(lang !== null) ? getL(lang, 'rewardsempty') : `No rewards found for this server!`}`);
+        }
+
+        try {
+            // Parse rewards in Map for fast search
+            // Result example: { 'role_id': { text: 0, voice: 250, video: 0 }, ... }
+            rewardsMap = new Map();
+            for (const reward of rewards) {
+                const [text, voice, video] = reward.xp_required.split(',').map(Number);
+                rewardsMap.set(reward.role_id, { text, voice, video });
+            }
+        } catch (err) {
+            console.error(`[MIGRATE] Error while mapping rewards ${guildId}:`, err);
+            errorcnt = ++errorcnt;
+        }
+
+        // Fetch ALL Guild members
+        members = await Expify.fetchMembersWithRetry(interaction.guild);
+
+        // Collecting Userdata into array
+        const usersToUpdate = [];
+        try {
+            for (const [memberId, member] of members) {
+                if (member.user.bot) continue; // Bots are noXP
+
+                let maxText = 0;
+                let maxVoice = 0;
+                let maxVideo = 0;
+                let hasRewardRole = false;
+
+                // Check every user role
+                for (const roleId of member.roles.cache.keys()) {
+                    if (rewardsMap.has(roleId)) {
+                        hasRewardRole = true;
+                        const reqs = rewardsMap.get(roleId);
+                        
+                        // Select maximum integer of every type
+                        maxText = Math.max(maxText, reqs.text);
+                        maxVoice = Math.max(maxVoice, reqs.voice);
+                        maxVideo = Math.max(maxVideo, reqs.video);
+                    }
+                }
+
+                // If user have at least one role reward, preparing to write it
+                if (hasRewardRole) {
+                    usersToUpdate.push({
+                        guild_id: guildId,
+                        user_id: memberId,
+                        text_xp: maxText,
+                        voice_xp: maxVoice,
+                        video_xp: maxVideo
+                    });
+                }
+            }
+        } catch (err) {
+            console.error(`[MIGRATE] Error in userdata array ${guildId}:`, err);
+            errorcnt = ++errorcnt;
+        }
+
+
+        // Write all collected data into database using transaction
+        const syncUsers = db.transaction((users) => {
+            try {
+                const stmt = db.prepare(`
+                    INSERT INTO users (guild_id, user_id, text_xp, voice_xp, video_xp)
+                    VALUES (@guild_id, @user_id, @text_xp, @voice_xp, @video_xp)
+                    ON CONFLICT(guild_id, user_id) DO UPDATE SET 
+                        text_xp = MAX(users.text_xp, excluded.text_xp),
+                        voice_xp = MAX(users.voice_xp, excluded.voice_xp),
+                        video_xp = MAX(users.video_xp, excluded.video_xp)
+                `);
+                
+                for (const user of users) {
+                    stmt.run(user);
+                }
+            } catch (err) {
+                console.error(`[MIGRATE] Error while performing transaction for ${guildId}:`, err);
+                errorcnt = ++errorcnt;
+            }
+        });
+
+        // Start transaction
+        syncUsers(usersToUpdate);
+
+        // Set last migration date
+        if (errorcnt) {
+            try {
+                db.prepare(`
+                    INSERT INTO guild_limits (guild_id, migrate_1)
+                    VALUES (?, ?)
+                    ON CONFLICT(guild_id) DO UPDATE SET 
+                        migrate_1 = excluded.migrate_1
+                `).run(`${guildId}`, startTime);
+            } catch (err) {
+                console.error(`[LIMITS] Error in guild_limits updating migrate_1 ${guildId}:`, err)
+            }
+        }
+
         //Building response
         let replycontent;
         if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
+            const l = (key) => getL(lang, key);
+            replycontent = `✅ ${l('migratecomplete')} **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n${l('operationerr')}: ${errorcnt}` : ' '}`;
         } else {
-            replycontent = `Work in progress`;
+            replycontent = `✅ Sync Users XP with rewards completed! Users updated: **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n🔴 Operation completed with errors: ${errorcnt}` : ' '}`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        console.log(`[MIGRATE] Updated ${usersToUpdate.length} users in ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, replycontent);
     };
+
+    static expifyMigrateHelp = async function(interaction, lang, isephemeral) {
+        //Building response
+        let replycontent;
+        if (lang) {
+            replycontent = `✅ ${getL(lang, 'expifymigratehelp')}`;
+        } else {
+            replycontent = `✅ ${getL('ru', 'expifymigratehelp')}`;
+        }
+        await Lunar.editReply(interaction, replycontent, null, true);
+    }
 
     static rank = async function(interaction, lang, isephemeral) {
         const rankTime = Date.now()
@@ -458,7 +620,7 @@ class Expify {
         // If server not found in DB
         if (!guildParams) {
             console.log(`[RANK] Guild ${interaction.guildId} not found in DB`);
-            return await Lunar.reply(interaction, `${getL('ru', 'guildnotfound')}`, isephemeral)
+            return await Lunar.reply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`, isephemeral)
         }
 
         // If restricted and interaction not from allowed channel. Else default ephemeral behaviour
@@ -556,7 +718,7 @@ class Expify {
             .get(interaction.guildId, rewardRoleId);
 
         // Total rewards count
-        const { total } = db.prepare("SELECT COUNT(*) as total FROM role_rewards WHERE guild_id = ?")
+        const { total = 0 } = db.prepare("SELECT COUNT(*) as total FROM role_rewards WHERE guild_id = ?")
             .get(interaction.guildId);
 
         // Limit check

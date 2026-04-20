@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = 'indev 11';
+const corever = 'indev 12';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -12,7 +12,7 @@ const { token } = require('./config.json');
 
 // Create a new client instance
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
     rest: { timeout: 60000 } 
 });
 
@@ -51,6 +51,8 @@ client.on('interactionCreate', async (interaction) => {
             await Expify.expifyReset(interaction, lang);
         } else if (sub === 'migrate') {
             await Expify.expifyMigrate(interaction, lang);
+        } else if (sub === 'migrate-help') {
+            await Expify.expifyMigrateHelp(interaction, lang);
         }
     } else if (interaction.commandName === 'rank') {
         await Expify.rank(interaction, lang, isephemeral);

@@ -98,8 +98,7 @@ function checkDB() {
 
     // Check guild_limits table
     checkColumns('guild_limits', {
-        'migrate_1': 'INTEGER',
-        'migrage_2': 'INTEGER'
+        'migrate_1': 'INTEGER'
     });
 };
 
@@ -163,8 +162,7 @@ function initializeDB() {
     db.prepare(`
         CREATE TABLE IF NOT EXISTS guild_limits (
             guild_id TEXT PRIMARY KEY,
-            migrate_1 INTEGER,
-            migrage_2 INTEGER
+            migrate_1 INTEGER
         )
     `).run();
 
