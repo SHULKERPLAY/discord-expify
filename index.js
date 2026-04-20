@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = 'indev 10';
+const corever = 'indev 11';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -34,7 +34,7 @@ client.on('interactionCreate', async (interaction) => {
         await Expify.invite(interaction, lang);
     } else if (interaction.commandName === 'expify') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        const sub = interaction.options.getSubcommand()
+        const sub = interaction.options.getSubcommand();
         if (sub === 'get') {
             await Expify.expifyGet(interaction, lang);
         } else if (sub === 'toggle') {
@@ -54,6 +54,16 @@ client.on('interactionCreate', async (interaction) => {
         }
     } else if (interaction.commandName === 'rank') {
         await Expify.rank(interaction, lang, isephemeral);
+    } else if (interaction.commandName === 'reward') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        const sub = interaction.options.getSubcommand();
+        if (sub === 'add') {
+            await Expify.rewardAdd(interaction, lang);
+        } else if (sub === 'remove') {
+            await Expify.rewardRemove(interaction, lang);
+        } else if (sub === 'list') {
+            await Expify.rewardList(interaction, lang);
+        }
     } else if (interaction.commandName === 'xp') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         const sub = interaction.options.getSubcommand()

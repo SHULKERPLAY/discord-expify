@@ -14,12 +14,16 @@ class Expify {
     static defaultVideoXP = 20;
 
     // Limits
+    // Max rewards per guild
+    static maxRewards = 30;
     // Max NoXP Channels
     static maxNoxpCid = 10;
     // Max NoXP Users
     static maxNoxpUid = 10;
     // Max NoXP Roles
     static maxNoxpRid = 5;
+    // Maximum XP
+    static maxUserXp = 160280000;
 
     /** Update guild_params object in database
      * @param {string} type - Column Name (example: 'text_xp')
@@ -61,15 +65,15 @@ class Expify {
                 
                 // Compile an array only if condition > 0
                 const conditions = [];
-                if (textXp > 0) conditions.push(`⌨️: ${XpLeveling.getLevel(textXp)}LVL`);
-                if (voiceXp > 0) conditions.push(`🎙️: ${XpLeveling.getLevel(voiceXp)}LVL`);
-                if (videoXp > 0) conditions.push(`🎦: ${XpLeveling.getLevel(videoXp)}LVL`);
+                if (textXp > 0) conditions.push(`(⌨️ ${XpLeveling.getLevel(textXp)} LVL)`);
+                if (voiceXp > 0) conditions.push(`(🎙️ ${XpLeveling.getLevel(voiceXp)} LVL)`);
+                if (videoXp > 0) conditions.push(`(🎦 ${XpLeveling.getLevel(videoXp)} LVL)`);
 
                 // Join conditions
-                const conditionsText = conditions.join(', ');
+                const conditionsText = conditions.join(' + ');
 
                 // Return a string
-                return `ID: ${row.id} [ ${conditionsText} ] ${(lang !== null) ? getL(lang, 'rewards') : 'Rewards'}: <@&${row.role_id}>`;
+                return `**ID: ${row.id}** - <@&${row.role_id}> ${conditionsText}`;
             }).join('\n');
         }
 
@@ -272,8 +276,9 @@ class Expify {
         //Building response
         const guildName = interaction.guild?.name ?? undefined;
         const guildIcon = interaction.guild?.iconURL() ?? undefined;
-        const getEmbed = Lunar.createEmbed(typeName, data, null, 'ffc06e', guildName, guildIcon)
-        console.log(`GET ${type} of ${interaction.guildId} (${timeDiff(startTime)}ms)`)
+        const footer = `⌨️: ${(lang !== null) ? getL(lang, 'textxp') : 'Text XP'}, 🎙️: ${(lang !== null) ? getL(lang, 'voicexp') : 'Voice XP'}, 🎦: ${(lang !== null) ? getL(lang, 'videoxp') : 'Video XP'}`
+        const getEmbed = Lunar.createEmbed(typeName, data, footer, 'ffc06e', guildName, guildIcon)
+        console.log(`GET ${type} of ${interaction.guildId}(${timeDiff(startTime)}ms)`)
         await Lunar.editReply(interaction, null, [getEmbed]);
     };
     
@@ -537,6 +542,110 @@ class Expify {
         await Lunar.editReply(interaction, null, [rankembed]);
     };
 
+    static rewardAdd = async function(interaction, lang) {
+        const startTime = Date.now();
+        const textLevel = interaction.options.getInteger('text_level') ?? 0;
+        const voiceLevel = interaction.options.getInteger('voice_level') ?? 0;
+        const videoLevel = interaction.options.getInteger('video_level') ?? 0;
+        const rewardRole = interaction.options.getRole('role');
+        const rewardRoleId = rewardRole.id
+        let newId;
+
+        // Check if record already exists 
+        const existing = db.prepare("SELECT id FROM role_rewards WHERE guild_id = ? AND role_id = ?")
+            .get(interaction.guildId, rewardRoleId);
+
+        // Total rewards count
+        const { total } = db.prepare("SELECT COUNT(*) as total FROM role_rewards WHERE guild_id = ?")
+            .get(interaction.guildId);
+
+        // Limit check
+        if (!existing && total >= Expify.maxRewards) {
+            return await Lunar.editReply(interaction, `⛔ ${(lang !== null) ? getL(lang, 'rewardslimit') : 'You reached the rewards limit. Remove old reward before adding new!'}`);
+        }
+
+        // Check if role not on same server
+        if (rewardRole.guild.id !== interaction.guildId) {
+            return await Lunar.editReply(interaction, `⛔ ${(lang !== null) ? getL(lang, 'servermismatch') : 'Adding only objects from current server is allowed!'}`);
+        }
+
+        // Check if missing conditions
+        if (!textLevel && !voiceLevel && !videoLevel) {
+            return await Lunar.editReply(interaction, `⛔ ${(lang !== null) ? getL(lang, 'rewardsaddnull') : 'Specify at least one condition!'}`);
+        }
+
+        // UPSERT rewards data
+        try {
+            const upsert = db.prepare(`
+                INSERT INTO role_rewards (guild_id, xp_required, role_id) 
+                VALUES (@guild_id, @xp_required, @role_id)
+                ON CONFLICT(guild_id, role_id) DO UPDATE SET 
+                    xp_required = excluded.xp_required
+            `);
+
+            upsert.run({
+                guild_id: interaction.guildId,
+                role_id: `${rewardRoleId}`,
+                xp_required: `${XpLeveling.getXpForLevel(textLevel)},${XpLeveling.getXpForLevel(voiceLevel)},${XpLeveling.getXpForLevel(videoLevel)}`
+            });
+
+            // Get record ID
+            newId = db.prepare("SELECT id FROM role_rewards WHERE guild_id = ? AND role_id = ?")
+                .get(interaction.guildId, rewardRoleId);
+        } catch (err) {
+            console.error(`[REWARD] Error while upserting data for ${interaction.guildId}:`, err)
+        }
+
+        //Building response
+        const replycontent = `${(existing) ? `🟡 ${(lang !== null) ? `${getL(lang, 'rewardupdated')} (ID: ${newId.id})` : `Reward updated! (ID: ${newId.id})`}` : `🟢 ${(lang !== null) ? `${getL(lang, 'rewardadded')} (ID: ${newId.id})` : `New reward added! (ID: ${newId.id})`}`}`
+        console.log(`${(existing) ? 'Updated' : 'Added'} reward ${newId.id} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, replycontent);
+    };
+
+    static rewardRemove = async function(interaction, lang) {
+        const startTime = Date.now();
+        let result;
+        let status;
+        const rewardId = interaction.options.getInteger('id') ?? 0;
+
+        try {
+            // Remove reward by ID if it in the same guild
+            const statement = db.prepare(`
+                DELETE FROM role_rewards 
+                WHERE id = ? AND guild_id = ?
+            `);
+
+            result = statement.run(rewardId, interaction.guildId);
+        } catch (err) {
+            console.error(`[REWARD] Error while deleting ID:${rewardId} for ${interaction.guildId}:`, err)
+        }
+
+        //Building response
+        if (result.changes > 0) {
+            status = `🟢 ${(lang !== null) ? getL(lang, 'removed') : `Value successfuly removed!`}`
+            console.log(`Removed reward ${rewardId} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        } else {
+            status = `🟡 ${(lang !== null) ? getL(lang, 'notremoved') : `Value was not removed!`}`
+            console.log(`Reward ${rewardId} not removed for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        }
+        await Lunar.editReply(interaction, status);
+    };
+
+    static rewardList = async function(interaction, lang) {
+        const startTime = Date.now();
+        const typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
+        const data = Expify.getRewardsEmbedData(interaction, lang);
+
+        //Building response
+        const guildName = interaction.guild?.name ?? undefined;
+        const guildIcon = interaction.guild?.iconURL() ?? undefined;
+        const footer = `⌨️: ${(lang !== null) ? getL(lang, 'textxp') : 'Text XP'}, 🎙️: ${(lang !== null) ? getL(lang, 'voicexp') : 'Voice XP'}, 🎦: ${(lang !== null) ? getL(lang, 'videoxp') : 'Video XP'}`
+        const getEmbed = Lunar.createEmbed(typeName, data, footer, 'ffc06e', guildName, guildIcon)
+
+        console.log(`GET rewards of ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, null, [getEmbed]);
+    };
+
     static xpSet = async function(interaction, lang) {
         //Building response
         let replycontent;
@@ -545,7 +654,7 @@ class Expify {
         } else {
             replycontent = `Work in progress`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        await Lunar.editReply(interaction, replycontent);
     };
 
     static xpCalc = async function(interaction, lang) {
@@ -556,7 +665,7 @@ class Expify {
         } else {
             replycontent = `Work in progress`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        await Lunar.editReply(interaction, replycontent);
     };
 
     static xpReset = async function(interaction, lang) {
@@ -567,7 +676,7 @@ class Expify {
         } else {
             replycontent = `Work in progress`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        await Lunar.editReply(interaction, replycontent);
     };
 
     static noxpCID = async function(interaction, lang) {
@@ -578,7 +687,7 @@ class Expify {
         } else {
             replycontent = `Work in progress`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        await Lunar.editReply(interaction, replycontent);
     };
 
     static noxpUID = async function(interaction, lang) {
@@ -589,7 +698,7 @@ class Expify {
         } else {
             replycontent = `Work in progress`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        await Lunar.editReply(interaction, replycontent);
     };
 
     static noxpRID = async function(interaction, lang) {
@@ -600,7 +709,7 @@ class Expify {
         } else {
             replycontent = `Work in progress`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        await Lunar.editReply(interaction, replycontent);
     };
 
     static top = async function(interaction, lang) {
@@ -611,7 +720,7 @@ class Expify {
         } else {
             replycontent = `Work in progress`;
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+        await Lunar.editReply(interaction, replycontent);
     };
 }
 

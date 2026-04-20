@@ -106,6 +106,67 @@ class ExpifyBuiler {
             .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
         )
 
+    static rewardcmd = new SlashCommandBuilder()
+        .setName('reward')
+        .setDescription('🔗 Manage Guild rewards')
+        .setDescriptionLocalizations(getLoc('rewardscmd', '🔗 '))
+        .addSubcommand(subcommand =>
+            subcommand.setName('add')
+            .setDescription('🔗 Add Reward for reaching one or multiple level conditions. Select assigned role reward to update')
+            .setDescriptionLocalizations(getLoc('rewardsadd', '🔗 '))
+            .addRoleOption(option =>
+                option.setName('role')
+                .setNameLocalizations(getLoc('arg.role'))
+                .setDescription('Select role which will be assigned as reward')
+                .setDescriptionLocalizations(getLoc('rewardsaddrole'))
+                .setRequired(true)
+            )
+            .addIntegerOption(option =>
+                option.setName('text_level')
+                .setNameLocalizations(getLoc('arg.text_level'))
+                .setDescription('Type required level for your reward')
+                .setDescriptionLocalizations(getLoc('rewardstypelevel'))
+                .setMinValue(1)
+                .setMaxValue(1000)
+                .setRequired(false)
+            )
+            .addIntegerOption(option =>
+                option.setName('voice_level')
+                .setNameLocalizations(getLoc('arg.voice_level'))
+                .setDescription('Type required level for your reward')
+                .setDescriptionLocalizations(getLoc('rewardstypelevel'))
+                .setMinValue(1)
+                .setMaxValue(1000)
+                .setRequired(false)
+            )
+            .addIntegerOption(option =>
+                option.setName('video_level')
+                .setNameLocalizations(getLoc('arg.video_level'))
+                .setDescription('Type required level for your reward')
+                .setDescriptionLocalizations(getLoc('rewardstypelevel'))
+                .setMinValue(1)
+                .setMaxValue(1000)
+                .setRequired(false)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('remove')
+            .setDescription('🔗 Remove reward by ID (You can check ID with: /reward list)')
+            .setDescriptionLocalizations(getLoc('rewardsremove', '🔗 '))
+            .addIntegerOption(option =>
+                option.setName('id')
+                .setDescription('Type reward ID')
+                .setDescriptionLocalizations(getLoc('rewardsremoveid'))
+                .setMinValue(1)
+                .setRequired(true)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('list')
+            .setDescription('🔗 Get all rewards list')
+            .setDescriptionLocalizations(getLoc('rewardslist', '🔗 '))
+        )
+
     static rankcmd = new SlashCommandBuilder()
         .setName('rank')
         .setDescription('🔗 Check your or another user rank')
@@ -126,6 +187,7 @@ class ExpifyBuiler {
         setAdminsOnly(this.invite)
         setAdminsOnly(this.expifycmd)
         setAdminsOnly(this.rankcmd)
+        setAdminsOnly(this.rewardcmd)
     }
 }; 
 

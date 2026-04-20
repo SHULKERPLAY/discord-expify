@@ -68,7 +68,8 @@ function checkDB() {
         'user_id': 'TEXT',
         'text_xp': 'INTEGER DEFAULT 0',
         'voice_xp': 'INTEGER DEFAULT 0',
-        'video_xp': 'INTEGER DEFAULT 0'
+        'video_xp': 'INTEGER DEFAULT 0',
+        'last_updated': 'INTEGER DEFAULT 0'
     });
 
     // Check guild_params table
@@ -105,7 +106,8 @@ function checkDB() {
 // Check and create Database
 function initializeDB() {
     const initTime = Date.now();
-    // User progress (Composite primary key)
+    /* User progress (Composite primary key)
+     * last_updated - a Date.now() integer which need to be set with user xp update */
     db.prepare(`
         CREATE TABLE IF NOT EXISTS users (
             guild_id TEXT,
@@ -113,6 +115,7 @@ function initializeDB() {
             text_xp INTEGER DEFAULT 0,
             voice_xp INTEGER DEFAULT 0,
             video_xp INTEGER DEFAULT 0,
+            last_updated INTEGER DEFAULT 0,
             PRIMARY KEY (guild_id, user_id)
         )
     `).run();
@@ -148,7 +151,8 @@ function initializeDB() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             guild_id TEXT,
             xp_required TEXT,
-            role_id TEXT
+            role_id TEXT,
+            UNIQUE(guild_id, role_id)
         )
     `).run();
 
