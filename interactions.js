@@ -366,6 +366,11 @@ class Expify {
         const startTime = Date.now();
         const channel = interaction.options.getChannel('channel');
         let status;
+        let getParams;
+
+        // Check if guild not exist
+        const probe = db.prepare("SELECT text_xp_rate FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) }
 
         // Reset settings
         if (!channel) {

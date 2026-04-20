@@ -88,21 +88,21 @@ class ExpifyBuiler {
             )
         )
         .addSubcommand(subcommand =>
-            subcommand.setName('announcement')
-            .setDescription('🔗 Set Channel for Reward announcement. Leave blank to disable')
-            .setDescriptionLocalizations(getLoc('expifyannouncement', '🔗 '))
-            .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
-        )
-        .addSubcommand(subcommand =>
-            subcommand.setName('warnings')
-            .setDescription('🔗 Set Channel for administrative warnings. Leave blank to disable')
-            .setDescriptionLocalizations(getLoc('expifywarnings', '🔗 '))
-            .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
-        )
-        .addSubcommand(subcommand =>
-            subcommand.setName('rank')
-            .setDescription('🔗 Allow to public check rank only in this channel. Leave blank to disable')
-            .setDescriptionLocalizations(getLoc('expifyrank', '🔗 '))
+            subcommand.setName('channels')
+            .setDescription('🔗 Set Channel for ... . Leave blank to disable')
+            .setDescriptionLocalizations(getLoc('expifychannelfor', '🔗 '))
+            .addStringOption(option =>
+                option.setName('type')
+                .setNameLocalizations(getLoc('arg.type'))
+                .setDescription('Select channel type to set or disable')
+                .setDescriptionLocalizations(getLoc('expifychannelwhich'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Reward announcement', 'announce_cid', 'expifyannouncement'),
+                    addSimpleChoice('Administrative warnings', 'admin_cid', 'expifywarnings'),
+                    addSimpleChoice('Allow to public check rank only in specified channel', 'rank_cid', 'expifyrank')
+                )
+            )
             .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
         )
         .addSubcommand(subcommand =>
