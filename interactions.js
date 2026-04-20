@@ -273,8 +273,8 @@ class Expify {
         const guildName = interaction.guild?.name ?? undefined;
         const guildIcon = interaction.guild?.iconURL() ?? undefined;
         const getEmbed = Lunar.createEmbed(typeName, data, null, 'ffc06e', guildName, guildIcon)
-        await Lunar.editReply(interaction, null, [getEmbed]);
         console.log(`GET ${type} of ${interaction.guildId} (${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, null, [getEmbed]);
     };
     
     static expifyToggle = async function(interaction, lang) {
@@ -294,8 +294,8 @@ class Expify {
         let ltype;
         if (type === 'text_xp') {ltype = 'textxp'} else if (type === 'voice_xp') {ltype = 'voicexp'} else if (type === 'video_xp') {ltype = 'videoxp'}
         const replycontent = `${(newState > 0) ? '🟢' : '🔴'} ${(lang !== null) ? getL(lang, ltype) : getL('ru', ltype)} ${(newState > 0) ? `${(lang !== null) ? getL(lang, 'enabled') : 'Enabled'}` : `${(lang !== null) ? getL(lang, 'disabled') : 'Disabled'}`}!`
-        await Lunar.editReply(interaction, replycontent);
         console.log(`Toggle ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, replycontent);
     };
 
     static expifyGain = async function(interaction, lang) {
@@ -320,30 +320,51 @@ class Expify {
         }
 
         //Building response
-        await Lunar.editReply(interaction, status);
         console.log(`Updated ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, status);
     };
 
-    static expifyAnnouncement = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
-        }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
-    };
+    /** Interaction for managing guild_params CIDs
+     * @param {interaction} interaction - Interaction object
+     * @param {string|null} lang - Language code string. Null if language missing in locales 
+     * @param {string} type - 'any_cid' column in guild_params table */
+    static expifyCIDs = async function(interaction, lang, type) {
+        const startTime = Date.now();
+        const channel = interaction.options.getChannel('channel');
+        let status;
 
-    static expifyWarnings = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+        // Reset settings
+        if (!channel) {
+            if (Expify.updateGuildParam(type, '0', interaction.guildId)) {
+                status = `🟢 ${(lang !== null) ? getL(lang, 'updated') : `Value successfuly updated!`}`
+            } else {
+                status = `🟡 ${(lang !== null) ? getL(lang, 'notupdated') : `Value was not updated!`}`
+            }
+            console.log(`Reset ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+            return await Lunar.editReply(interaction, status);
         }
-        await Lunar.reply(interaction, replycontent, true, undefined, true);
+
+        // Check if channel not on the same server
+        if (channel.guild.id !== interaction.guildId) {
+            return await Lunar.editReply(interaction, `⛔ ${(lang !== null) ? getL(lang, 'servermismatch') : 'Adding only objects from current server is allowed!'}`);
+        }
+
+        // Check if we have access to channel
+        const permissions = channel.permissionsFor(interaction.client.user);
+        if (!permissions.has(['SendMessages'])) {
+            return await Lunar.editReply(interaction, `⛔ ${(lang !== null) ? getL(lang, 'missingpermissions') : 'Missing permissions to access this channel!'}`);
+        }
+
+        // Get object ID
+        const channelId = channel.id;
+        if (Expify.updateGuildParam(type, `${channelId}`, interaction.guildId)) {
+            status = `🟢 ${(lang !== null) ? getL(lang, 'updated') : `Value successfuly updated!`}`
+        } else {
+            status = `🟡 ${(lang !== null) ? getL(lang, 'notupdated') : `Value was not updated!`}`
+        }
+
+        console.log(`Updated ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, status);
     };
 
     static expifyReset = async function(interaction, lang) {
@@ -512,8 +533,8 @@ class Expify {
         const rankembed = Lunar.createEmbed(`${userDisplayName} (@${userName})`, decription, null, '8bff6e', guildName, guildIcon)
 
         //Building response
-        await Lunar.editReply(interaction, null, [rankembed]);
         console.log(`Sent RANK [${userName}] (${timeDiff(rankTime)}ms)`)
+        await Lunar.editReply(interaction, null, [rankembed]);
     };
 
     static xpSet = async function(interaction, lang) {

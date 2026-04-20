@@ -1,6 +1,6 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ChannelType } = require('discord.js');
 const { getLoc } = require('./functions.js');
-const { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption } = require('./helpers.js');
+const { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption, addTextChannelOption } = require('./helpers.js');
 
 // Slash interactions builder
 class ExpifyBuiler {
@@ -86,6 +86,24 @@ class ExpifyBuiler {
                 .setMaxValue(100)
                 .setRequired(false)
             )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('announcement')
+            .setDescription('🔗 Set Channel for Reward announcement. Leave blank to disable')
+            .setDescriptionLocalizations(getLoc('expifyannouncement', '🔗 '))
+            .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('warnings')
+            .setDescription('🔗 Set Channel for administrative warnings. Leave blank to disable')
+            .setDescriptionLocalizations(getLoc('expifywarnings', '🔗 '))
+            .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('rank')
+            .setDescription('🔗 Allow to public check rank only in this channel. Leave blank to disable')
+            .setDescriptionLocalizations(getLoc('expifyrank', '🔗 '))
+            .addChannelOption(addTextChannelOption('Select channel', 'selectchannel', false))
         )
 
     static rankcmd = new SlashCommandBuilder()

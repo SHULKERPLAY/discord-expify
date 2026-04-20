@@ -1,4 +1,5 @@
 const { getLoc } = require('./functions.js');
+const { ChannelType } = require('discord.js');
 
 //Helpers
 //.setDefaultMemberPermissions(0) restricts usage to admins only. 
@@ -27,7 +28,7 @@ function addSimpleChoice(name, value, localeskey, localeprefix){
     return {name: name, value: value, name_localizations:(getLoc(localeskey, localeprefix))}
 }
 
-//XP Type option
+// XP Type option
 const addXpTypeOption = (description = ' ', descriptionKey = ' ', isrequired = false) => (option) => {
     option.setName('type')
     .setNameLocalizations(getLoc('arg.type'))
@@ -42,6 +43,17 @@ const addXpTypeOption = (description = ' ', descriptionKey = ' ', isrequired = f
     return option;
 };
 
+// Text Channel Options
+const addTextChannelOption = (description = ' ', descriptionKey = ' ', isrequired = false) => (option) => {
+    option.setName('channel')
+    .setNameLocalizations(getLoc('arg.channel'))
+    .setDescription(description)
+    .setDescriptionLocalizations(getLoc(descriptionKey))
+    .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum)
+    .setRequired(isrequired)
+
+    return option;
+};
 
 //export
-module.exports = { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption };
+module.exports = { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption, addTextChannelOption };

@@ -20,7 +20,7 @@ async function deployInteractions() {
                 await client.rest.put(Routes.applicationCommands(client.user.id), { body: commands });
                 console.log(`Interactions Deployed for ${readyClient.user.tag}!`);
             } catch (error) {
-                console.error(`Failed to deploy interactions:`, error.message);
+                console.error(`Failed to deploy interactions:`, error);
             } finally {
                 //End session
                 client.destroy();
@@ -29,7 +29,7 @@ async function deployInteractions() {
         //Authorization
         await client.login(token);
     } catch (err) {
-        console.error('Critical error:', err.message);
+        console.error('Critical error:', err);
     }
 }
 
