@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = 'indev 14';
+const corever = 'indev 15';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -74,6 +74,8 @@ client.on('interactionCreate', async (interaction) => {
         const sub = interaction.options.getSubcommand()
         if (sub === 'set') {
             await Expify.xpSet(interaction, lang);
+        } else if (sub === 'add') {
+            await Expify.xpAdd(interaction, lang);
         } else if (sub === 'calc') {
             await Expify.xpCalc(interaction, lang);
         } else if (sub === 'reset') {

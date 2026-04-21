@@ -223,6 +223,91 @@ class ExpifyBuiler {
             )
         )
 
+    static xpcmd = new SlashCommandBuilder()
+        .setName('xp')
+        .setDescription('🔗 XP related operations')
+        .setDescriptionLocalizations(getLoc('xprelated', '🔗 '))
+        .addSubcommand(subcommand =>
+            subcommand.setName('set')
+            .setDescription('🔗 Set user XP')
+            .setDescriptionLocalizations(getLoc('xpset', '🔗 '))
+            .addUserOption(option =>
+                option.setName('user')
+                .setNameLocalizations(getLoc('arg.user'))
+                .setDescription('Select user')
+                .setDescriptionLocalizations(getLoc('selectuser'))
+                .setRequired(true)
+            )
+            .addStringOption(addXpTypeOption('Select XP type to change', 'expifygaintype', true))
+            .addIntegerOption(option =>
+                option.setName('level')
+                .setNameLocalizations(getLoc('arg.level'))
+                .setDescription('Type integer')
+                .setDescriptionLocalizations(getLoc('quantityinteger'))
+                .setMinValue(0)
+                .setMaxValue(1000)
+                .setRequired(true)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('add')
+            .setDescription('🔗 Add XP to user')
+            .setDescriptionLocalizations(getLoc('xpadd', '🔗 '))
+            .addUserOption(option =>
+                option.setName('user')
+                .setNameLocalizations(getLoc('arg.user'))
+                .setDescription('Select user')
+                .setDescriptionLocalizations(getLoc('selectuser'))
+                .setRequired(true)
+            )
+            .addStringOption(addXpTypeOption('Select XP type to change', 'expifygaintype', true))
+            .addIntegerOption(option =>
+                option.setName('xp')
+                .setNameLocalizations(getLoc('arg.xp'))
+                .setDescription('Type integer')
+                .setDescriptionLocalizations(getLoc('quantityinteger'))
+                .setMinValue(0)
+                .setMaxValue(160280000)
+                .setRequired(true)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('reset')
+            .setDescription('🔗 Reset XP of user. Do not specify type to reset all types')
+            .setDescriptionLocalizations(getLoc('xpreset', '🔗 '))
+            .addUserOption(option =>
+                option.setName('user')
+                .setNameLocalizations(getLoc('arg.user'))
+                .setDescription('Select user')
+                .setDescriptionLocalizations(getLoc('selectuser'))
+                .setRequired(true)
+            )
+            .addStringOption(addXpTypeOption('Select XP type to change', 'expifygaintype', false))
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('calc')
+            .setDescription('🔗 Calculate XP to Level or Level to XP')
+            .setDescriptionLocalizations(getLoc('xpcalc', '🔗 '))
+            .addStringOption(option =>
+                option.setName('action')
+                .setNameLocalizations(getLoc('arg.action'))
+                .setDescription('Select Action')
+                .setDescriptionLocalizations(getLoc('selectaction'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Calculate Level from XP', 'xp', 'xptolevel'), addSimpleChoice('Calculate XP from Level', 'lvl', 'xpfromlevel')
+                )
+            )
+            .addIntegerOption(option =>
+                option.setName('quantity')
+                .setNameLocalizations(getLoc('arg.quantity'))
+                .setDescription('Type integer')
+                .setDescriptionLocalizations(getLoc('quantityinteger'))
+                .setMinValue(0)
+                .setMaxValue(160280000)
+                .setRequired(true)
+            )
+        )
 
     static rankcmd = new SlashCommandBuilder()
         .setName('rank')
@@ -231,7 +316,7 @@ class ExpifyBuiler {
         .addUserOption(option =>
             option.setName('user')
             .setNameLocalizations(getLoc('arg.user'))
-            .setDescription('Выберите пользователя, ранг которого вы хотите узнать')
+            .setDescription('Select user for display rank')
             .setDescriptionLocalizations(getLoc('rankuser'))
             .setRequired(false)
         )
@@ -245,6 +330,7 @@ class ExpifyBuiler {
         setAdminsOnly(this.expifycmd)
         setAdminsOnly(this.rankcmd)
         setAdminsOnly(this.rewardcmd)
+        setAdminsOnly(this.xpcmd)
     }
 }; 
 

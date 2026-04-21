@@ -24,6 +24,8 @@ class Expify {
     static maxNoxpRid = 5;
     // Maximum XP
     static maxUserXp = 160280000;
+    // Maximum LVL
+    static maxUserLevel = XpLeveling.getLevel(this.maxUserXp);
     // Migrate cooldown
     static cooldownMigrate = 3600000 * 24 * 7;
 
@@ -34,13 +36,47 @@ class Expify {
     static updateGuildParam(type, value, guildId) {
         let result;
         try {
-            const statement = db.prepare(`UPDATE guild_params SET ${type} = ? WHERE guild_id = ?`);
-            result = statement.run(value, guildId);
+            const stmt = db.prepare(`UPDATE guild_params SET ${type} = ? WHERE guild_id = ?`);
+            result = stmt.run(value, guildId);
         } catch (err) {
             console.error(`[GuildParam] Error while updating object ${type} in ${guildId}:`, err)
         }
 
-        return result.changes > 0; // Return true if updated
+        return !!result?.changes; // Return true if updated
+    }
+
+    /** Update users object in database. last_updated replaced automaticly
+     * @param {string} guildId - Guild ID
+     * @param {string} userId - User ID
+     * @param {number} textXp - text_xp to write
+     * @param {number} voiceXp - voice_xp to write
+     * @param {number} videoXp - video_xp to write */
+    static updateUsersXP(guildId, userId, textXp, voiceXp, videoXp) {
+        let result;
+        const updated = Date.now();
+        try {
+            const stmt = db.prepare(`
+                INSERT INTO users (guild_id, user_id, text_xp, voice_xp, video_xp, last_updated) 
+                VALUES (@guild_id, @user_id, @text_xp, @voice_xp, @video_xp, @last_updated)
+                ON CONFLICT(guild_id, user_id) DO UPDATE SET 
+                    text_xp = excluded.text_xp,
+                    voice_xp = excluded.voice_xp,
+                    video_xp = excluded.video_xp,
+                    last_updated = excluded.last_updated
+            `)
+            result = stmt.run({
+                guild_id: guildId,
+                user_id: userId,
+                text_xp: textXp,
+                voice_xp: voiceXp,
+                video_xp: videoXp,
+                last_updated: updated
+            });
+        } catch (err) {
+            console.error(`[USERS] Error while updating object in ${guildId},${userId}:`, err)
+        }
+
+        return !!result?.changes; // Return true if updated
     }
 
     /* Common method for getting all guild rewards for description field of embed message.
@@ -651,7 +687,7 @@ class Expify {
             getUser = db.prepare("SELECT * FROM users WHERE guild_id = ? AND user_id = ?");
             userData = getUser.get(`${interaction.guildId}`, `${userid}`) || {text_xp: 0,voice_xp: 0,video_xp: 0}; // Null data protect
         } catch (err) {
-            console.error(`[RANK] Error while loading user data:`, err)
+            console.error(`[RANK] Error while loading user data (${interaction.guildId},${userid}):`, err)
         }
 
         const guildName = interaction.guild?.name ?? undefined;
@@ -746,14 +782,12 @@ class Expify {
 
         // UPSERT rewards data
         try {
-            const upsert = db.prepare(`
+            db.prepare(`
                 INSERT INTO role_rewards (guild_id, xp_required, role_id) 
                 VALUES (@guild_id, @xp_required, @role_id)
                 ON CONFLICT(guild_id, role_id) DO UPDATE SET 
                     xp_required = excluded.xp_required
-            `);
-
-            upsert.run({
+            `).run({
                 guild_id: interaction.guildId,
                 role_id: `${rewardRoleId}`,
                 xp_required: `${XpLeveling.getXpForLevel(textLevel)},${XpLeveling.getXpForLevel(voiceLevel)},${XpLeveling.getXpForLevel(videoLevel)}`
@@ -843,36 +877,167 @@ class Expify {
     };
 
     static xpSet = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+        const startTime = Date.now();
+        let userData;
+
+        // Check if guild not exist
+        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) };
+
+        const userid = interaction.options.getUser('user')?.id;
+        let status;
+
+        try {
+            // Get User data
+            userData = db.prepare("SELECT text_xp, voice_xp, video_xp FROM users WHERE guild_id = ? AND user_id = ?")
+                .get(`${interaction.guildId}`, `${userid}`) || {text_xp: 0,voice_xp: 0,video_xp: 0}; // Null data protect
+        } catch (err) {
+            console.error(`[XP] Error while loading user data:`, err);
+            return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'operationerr')}`);
         }
-        await Lunar.editReply(interaction, replycontent);
+
+        // Get type
+        const type = interaction.options.getString('type');
+
+        // Convert level to xp
+        const xp = XpLeveling.getXpForLevel(interaction.options.getInteger('level'));
+
+        // Set xp
+        if (type === 'text_xp') { userData.text_xp = xp } else if (type === 'voice_xp') { userData.voice_xp = xp } else if (type === 'video_xp') { userData.video_xp = xp }
+
+        //Write and Building response
+        if (Expify.updateUsersXP(interaction.guildId, userid, userData.text_xp, userData.voice_xp, userData.video_xp)) {
+            status = `🟢 ${(lang !== null) ? getL(lang, 'updated') : `Value successfuly updated!`}`
+        } else {
+            status = `🟡 ${(lang !== null) ? getL(lang, 'notupdated') : `Value was not updated!`}`
+        }
+        console.log(`[XP] Replaced ${type} for ${interaction.guildId},${userid}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, status);
+    };
+
+    static xpAdd = async function(interaction, lang) {
+        const startTime = Date.now();
+        
+        // Check if guild not exist
+        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) };
+
+        const userid = interaction.options.getUser('user')?.id;
+        let status;
+        let userData;
+
+        try {
+            // Get User data
+            userData = db.prepare("SELECT text_xp, voice_xp, video_xp FROM users WHERE guild_id = ? AND user_id = ?")
+                .get(`${interaction.guildId}`, `${userid}`) || {text_xp: 0,voice_xp: 0,video_xp: 0}; // Null data protect
+        } catch (err) {
+            console.error(`[XP] Error while loading user data:`, err);
+            return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'operationerr')}`);
+        }
+
+        // Get type
+        const type = interaction.options.getString('type');
+
+        // Get xp
+        const xp = interaction.options.getInteger('xp');
+
+        // Update xp
+        if (type === 'text_xp') { 
+            userData.text_xp = (userData.text_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.text_xp + xp);
+        } else if (type === 'voice_xp') {
+            userData.voice_xp = (userData.voice_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.voice_xp + xp);
+        } else if (type === 'video_xp') {
+            userData.video_xp = (userData.video_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.video_xp + xp);
+        }
+
+        //Write and Building response
+        if (Expify.updateUsersXP(interaction.guildId, userid, userData.text_xp, userData.voice_xp, userData.video_xp)) {
+            status = `🟢 ${(lang !== null) ? getL(lang, 'updated') : `Value successfuly updated!`}`
+        } else {
+            status = `🟡 ${(lang !== null) ? getL(lang, 'notupdated') : `Value was not updated!`}`
+        }
+        console.log(`[XP] Replaced ${type} for ${interaction.guildId},${userid}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, status);
     };
 
     static xpCalc = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+        let result;
+        // Get type
+        const type = interaction.options.getString('action');
+
+        // Get xp or lvl
+        const value = interaction.options.getInteger('quantity');
+
+        // Calculate according limits
+        if (type === 'xp') {
+            // XP To Level
+            const xp = value >= Expify.maxUserXp ? Expify.maxUserXp : value;
+            result = `✅ **${xp}xp = ${XpLeveling.getLevel(xp)}** LVL (+ ${XpLeveling.getLevelProgress(xp)}xp)`
+        } else if (type === 'lvl') {
+            // Level To XP
+            const lvl = value >= Expify.maxUserLevel ? Expify.maxUserLevel : value;
+            result = `✅ **${lvl} LVL = ${XpLeveling.getXpForLevel(lvl)}xp** (+ ${XpLeveling.getXpDiff(lvl)}xp --> ${lvl + 1} LVL)`
         }
-        await Lunar.editReply(interaction, replycontent);
+
+        // Sending response
+        await Lunar.editReply(interaction, result);
     };
 
     static xpReset = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+        const startTime = Date.now();
+
+        // Check if guild not exist
+        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) };
+
+        const userid = interaction.options.getUser('user')?.id;
+        let status;
+        let result;
+        let userData;
+        const xp = 0;
+
+        // Get type
+        const type = interaction.options.getString('type') ?? 'none';
+
+        if (type !== 'none') {
+            try {
+                // Get User data if needed
+                userData = db.prepare("SELECT text_xp, voice_xp, video_xp FROM users WHERE guild_id = ? AND user_id = ?")
+                    .get(`${interaction.guildId}`, `${userid}`) || {text_xp: 0,voice_xp: 0,video_xp: 0}; // Null data protect
+            } catch (err) {
+                console.error(`[XP] Error while loading user data:`, err);
+                return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'operationerr')}`);
+            }
         }
-        await Lunar.editReply(interaction, replycontent);
+
+        // Update xp
+        if (type === 'text_xp') { 
+            userData.text_xp = xp;
+        } else if (type === 'voice_xp') {
+            userData.voice_xp = xp;
+        } else if (type === 'video_xp') {
+            userData.video_xp = xp;
+        } else if (type === 'none') {
+            try {
+                // Reset user data
+                const stmt = db.prepare(`DELETE FROM users WHERE guild_id = ? AND user_id = ?`);
+                const run = stmt.run(interaction.guildId, userid);
+                result = !!run?.changes;
+            } catch (err) {
+                console.error(`[XP] Error while deleting user data:`, err.message)
+            }
+        }
+
+        if (type !== 'none') { result = Expify.updateUsersXP(interaction.guildId, userid, userData.text_xp, userData.voice_xp, userData.video_xp) }
+
+        //Write and Building response
+        if (result > 0) {
+            status = `🟢 ${(lang !== null) ? getL(lang, 'updated') : `Value successfuly updated!`}`
+        } else {
+            status = `🟡 ${(lang !== null) ? getL(lang, 'notupdated') : `Value was not updated!`}`
+        }
+        console.log(`[XP] Resetted ${type} for ${interaction.guildId},${userid}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, status);
     };
 
     static noxpCID = async function(interaction, lang) {

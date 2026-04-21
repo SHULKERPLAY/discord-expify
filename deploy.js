@@ -15,21 +15,17 @@ async function deployInteractions() {
         const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
         client.once(Events.ClientReady, async (readyClient) => {
-            try {
-                //app commands registration
-                await client.rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-                console.log(`Interactions Deployed for ${readyClient.user.tag}!`);
-            } catch (error) {
-                console.error(`Failed to deploy interactions:`, error);
-            } finally {
-                //End session
-                client.destroy();
-            }
+            //app commands registration
+            await client.rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+            console.log(`Interactions Deployed for ${readyClient.user.tag}!`);
+
+            //End session
+            await client.destroy();
         });
         //Authorization
         await client.login(token);
     } catch (err) {
-        console.error('Critical error:', err);
+        console.error('[DEPLOY] Error while deploying interactions:', err);
     }
 }
 

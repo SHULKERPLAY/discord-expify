@@ -101,7 +101,6 @@ class XpLeveling {
         return Math.floor(level);
     }
     
-
     // Get required cumulative xp int for level int
     static getXpForLevel(level = 0) {
         level = typeof level === 'string' ? Number(level) : level;
