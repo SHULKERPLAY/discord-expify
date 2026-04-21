@@ -196,6 +196,33 @@ class ExpifyBuiler {
             .setDescription('🔗 Get all rewards list')
             .setDescriptionLocalizations(getLoc('rewardslist', '🔗 '))
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('mode')
+            .setDescription('🔗 Change reward mode')
+            .setDescriptionLocalizations(getLoc('rewardmodedesc', '🔗 '))
+            .addStringOption(option =>
+                option.setName('type')
+                .setNameLocalizations(getLoc('arg.type'))
+                .setDescription('Select reward mode')
+                .setDescriptionLocalizations(getLoc('rewardmodedesc'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Save all rewards (Default)', 'all', 'rewardmodeall'),
+                    addSimpleChoice('Save rewards for multiple xp types and only top rewards for single xp type', 'top', 'rewardmodetoponly')
+                )
+            )
+            .addStringOption(option =>
+                option.setName('confirmation')
+                .setNameLocalizations(getLoc('arg.confirmation_1'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+                )
+            )
+        )
+
 
     static rankcmd = new SlashCommandBuilder()
         .setName('rank')

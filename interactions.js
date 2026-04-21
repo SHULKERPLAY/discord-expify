@@ -49,6 +49,11 @@ class Expify {
         let getRewards;
         let rewards;
         let data;
+
+        // Check if guild not exist
+        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return `${getL( lang ?? 'ru', 'guildnotfound')}` }
+
         try {
             // Get rewards for guild
             getRewards = db.prepare(`SELECT * FROM role_rewards WHERE guild_id = ?`);
@@ -79,7 +84,7 @@ class Expify {
             }).join('\n');
         }
 
-        return data;
+        return `${data}\n### ${getL( lang ?? 'ru', 'rewardmode')}\n${(params.reward_mode > 0) ? getL( lang ?? 'ru', 'rewardmodetoponly') : getL( lang ?? 'ru', 'rewardmodeall')}`;
     }
     
     static fetchMembersWithRetry = async function(guild, retries = 5) {
@@ -366,7 +371,6 @@ class Expify {
         const startTime = Date.now();
         const channel = interaction.options.getChannel('channel');
         let status;
-        let getParams;
 
         // Check if guild not exist
         const probe = db.prepare("SELECT text_xp_rate FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
@@ -544,7 +548,6 @@ class Expify {
             console.error(`[MIGRATE] Error in userdata array ${guildId}:`, err);
             errorcnt = ++errorcnt;
         }
-
 
         // Write all collected data into database using transaction
         const syncUsers = db.transaction((users) => {
@@ -807,10 +810,36 @@ class Expify {
         const guildName = interaction.guild?.name ?? undefined;
         const guildIcon = interaction.guild?.iconURL() ?? undefined;
         const footer = `⌨️: ${(lang !== null) ? getL(lang, 'textxp') : 'Text XP'}, 🎙️: ${(lang !== null) ? getL(lang, 'voicexp') : 'Voice XP'}, 🎦: ${(lang !== null) ? getL(lang, 'videoxp') : 'Video XP'}`
-        const getEmbed = Lunar.createEmbed(typeName, data, footer, 'ffc06e', guildName, guildIcon)
+        const getEmbed = Lunar.createEmbed(typeName, data, footer, '716eff', guildName, guildIcon)
 
         console.log(`GET rewards of ${interaction.guildId}(${timeDiff(startTime)}ms)`)
         await Lunar.editReply(interaction, null, [getEmbed]);
+    };
+
+    static rewardMode = async function(interaction, lang) {
+        const startTime = Date.now();
+        let status;
+
+        // Check confirmation
+        if (interaction.options.getString('confirmation') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
+
+        // Check if guild not exist
+        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) }
+
+        // Get type to set
+        let type;
+        if (interaction.options.getString('type') === 'all') { type = 0 } else { type = 1 }
+
+        if (Expify.updateGuildParam('reward_mode', type, interaction.guildId)) {
+            status = `🟢 ${(lang !== null) ? getL(lang, 'updated') : `Value successfuly updated!`}`
+        } else {
+            status = `🟡 ${(lang !== null) ? getL(lang, 'notupdated') : `Value was not updated!`}`
+        }
+
+        //Building response
+        console.log(`Updated reward_mode for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+        await Lunar.editReply(interaction, status);
     };
 
     static xpSet = async function(interaction, lang) {
