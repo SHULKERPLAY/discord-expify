@@ -680,7 +680,7 @@ class Expify {
         syncUsers(usersToUpdate);
 
         // Set last migration date
-        if (errorcnt) {
+        if (!errorcnt) {
             try {
                 db.prepare(`
                     INSERT INTO guild_limits (guild_id, migrate_1)
@@ -1215,7 +1215,7 @@ class Expify {
         // Reply if this XP type is disabled
         let disabledxp;
         if (type === 'text_xp') { disabledxp = params.text_xp } else if (type === 'voice_xp') { disabledxp = params.voice_xp } else if (type === 'video_xp') { disabledxp = params.video_xp }
-        if (disabledxp = 0) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'somerankdisabled')}`) }
+        if (disabledxp == 0) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'somerankdisabled')}`) }
 
         // Get total count of pages
         const { total } = db.prepare(`
