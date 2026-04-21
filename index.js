@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = 'indev 15';
+const corever = 'indev 16';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -83,14 +83,7 @@ client.on('interactionCreate', async (interaction) => {
         }
     } else if (interaction.commandName === 'noxp') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        const sub = interaction.options.getSubcommand()
-        if (sub === 'channel') {
-            await Expify.noxpCID(interaction, lang);
-        } else if (sub === 'user') {
-            await Expify.noxpUID(interaction, lang);
-        } else if (sub === 'role') {
-            await Expify.noxpRID(interaction, lang);
-        }
+        await Expify.noxpIDs(interaction, lang);
     } else if (interaction.commandName === 'top') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         await Expify.top(interaction, lang);

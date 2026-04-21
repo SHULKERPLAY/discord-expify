@@ -324,7 +324,7 @@ class ExpifyBuiler {
 
     static topcmd = new SlashCommandBuilder()
         .setName('top')
-        .setDescription('🔗 Вывести топ сервера')
+        .setDescription('🔗 Display top XP Users')
         .setDescriptionLocalizations(getLoc('topcmd', '🔗 '))
         .addStringOption(addXpTypeOption('Select XP type', 'xptype', true))
         .addIntegerOption(option =>
@@ -334,6 +334,80 @@ class ExpifyBuiler {
             .setDescriptionLocalizations(getLoc('selectpage'))
             .setMinValue(1)
             .setRequired(false)
+        )
+
+    static noxpcmd = new SlashCommandBuilder()
+        .setName('noxp')
+        .setDescription('🔗 Set Objects which needed to exclude from gaining XP')
+        .setDescriptionLocalizations(getLoc('noxpcmd', '🔗 '))
+        .addSubcommand(subcommand =>
+            subcommand.setName('channel')
+            .setDescription('🔗 Add NoXP channel. Select same for removing it from NoXP list')
+            .setDescriptionLocalizations(getLoc('noxpchannel', '🔗 '))
+            .addChannelOption(option =>
+                option.setName('channel')
+                .setNameLocalizations(getLoc('arg.channel'))
+                .setDescription('Select channel')
+                .setDescriptionLocalizations(getLoc('selectchannel'))
+                .setRequired(true)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('user')
+            .setDescription('🔗 Add NoXP User. Select same for removing it from NoXP list')
+            .setDescriptionLocalizations(getLoc('noxpuser', '🔗 '))
+            .addUserOption(option =>
+                option.setName('user')
+                .setNameLocalizations(getLoc('arg.user'))
+                .setDescription('Select user')
+                .setDescriptionLocalizations(getLoc('selectuser'))
+                .setRequired(true)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('role')
+            .setDescription('🔗 Add NoXP Role. Select same for removing it from NoXP list')
+            .setDescriptionLocalizations(getLoc('noxprole', '🔗 '))
+            .addRoleOption(option =>
+                option.setName('role')
+                .setNameLocalizations(getLoc('arg.role'))
+                .setDescription('Select role')
+                .setDescriptionLocalizations(getLoc('selectrole'))
+                .setRequired(true)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('reset')
+            .setDescription('🔗 Reset selected list of NoXP objects')
+            .setDescriptionLocalizations(getLoc('noxpreset', '🔗 '))
+            .addStringOption(option =>
+                option.setName('type')
+                .setNameLocalizations(getLoc('arg.type'))
+                .setDescription('Select which list needed to reset')
+                .setDescriptionLocalizations(getLoc('noxpresetobj'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Channels', 'noxp_cid', 'channels'),
+                    addSimpleChoice('Users', 'noxp_uid', 'users'),
+                    addSimpleChoice('Roles', 'noxp_rid', 'roles'),
+                    addSimpleChoice('All', 'all', 'all'),
+                )
+            )
+            .addStringOption(option =>
+                option.setName('confirmation')
+                .setNameLocalizations(getLoc('arg.confirmation_1'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+                )
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('list')
+            .setDescription('🔗 Get noXP objects list')
+            .setDescriptionLocalizations(getLoc('noxplist', '🔗 '))
         )
 
     // Set default interactions access rules
@@ -346,6 +420,7 @@ class ExpifyBuiler {
         setAdminsOnly(this.rewardcmd);
         setAdminsOnly(this.xpcmd);
         setAdminsOnly(this.topcmd);
+        setAdminsOnly(this.noxpcmd);
     }
 }; 
 

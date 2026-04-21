@@ -79,6 +79,55 @@ class Expify {
         return !!result?.changes; // Return true if updated
     }
 
+    /** Toggles ID of Channel/User/Role in NoXP list
+     * @param {string} guildId - interaction.GuildId
+     * @param {string} type - Type in Database
+     * @param {string} UID - ID to add or remove
+     * @param {number} limit - Limit ID entries 
+     * @param {boolean} reset - Reset type if true */
+    static toggleIgnoreChannel(guildId, type, UID, limit = 10, reset = false) {
+        // Get current database value
+        const row = db.prepare(`SELECT ${type} FROM guild_params WHERE guild_id = ?`).get(guildId);
+        if (!row) { return { success: false, reason: 'guild_missing' } };
+
+        let updatedValue;
+        let currentCids;
+        let isPresent = true;
+        if (reset) {
+            // Reset value
+            updatedValue = '';
+        } else {
+            // if not exist create new object
+            currentCids = row?.[type] ? row[type].split(',') : [];
+
+            isPresent = currentCids.includes(UID);
+
+            // Toggle Logic
+            if (isPresent) {
+                // Remove ID if existing
+                currentCids = currentCids.filter(id => id !== UID);
+            } else {
+                // Check if limited
+                if (currentCids.length >= limit) { return { success: false, reason: 'limit_reached' } };
+
+                // Add ID if not found
+                currentCids.push(UID);
+            }
+
+            // Formatting string
+            updatedValue = currentCids.filter(id => id.length > 0).join(',');
+        }
+
+        // Save changes to Database
+        db.prepare(`
+            INSERT INTO guild_params (guild_id, ${type}) 
+            VALUES (?, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET ${type} = excluded.${type}
+        `).run(guildId, updatedValue);
+
+        return { success: true, added: !isPresent }; // Return true if added, and false if deleted
+    };
+
     /* Common method for getting all guild rewards for description field of embed message.
      * Usage is: data = Expify.getRewardsEmbedData(interaction, lang) */
     static getRewardsEmbedData(interaction, lang) {
@@ -122,6 +171,93 @@ class Expify {
 
         return `${data}\n### ${getL( lang ?? 'ru', 'rewardmode')}\n${(params.reward_mode > 0) ? getL( lang ?? 'ru', 'rewardmodetoponly') : getL( lang ?? 'ru', 'rewardmodeall')}`;
     }
+
+    static getNoxpData = async function(interaction, lang) {
+        let data;
+        let typeName;
+
+        typeName = (lang !== null) ? `${getL(lang, 'noxpentities')}` : 'NoXP entities';
+        let getSettings;
+        let guildParams;
+        try {
+            // Get server settings
+            getSettings = db.prepare(`
+                SELECT noxp_cid, noxp_uid, noxp_rid
+                FROM guild_params WHERE guild_id = ?
+            `);
+            guildParams = getSettings.get(`${interaction.guildId}`)
+        } catch (err) {
+            console.error(`[noXP Data] Error while loading guild configuration:`, err)
+        }
+
+        if (!guildParams) {
+            console.log(`[noXP Data] Guild ${interaction.guildId} not found in DB`);
+            return { result: 'guildnotfound', type: 0 };
+        }
+
+        // Channels Data
+        let cids;
+        let cidCnt;
+        if (guildParams.noxp_cid && guildParams.noxp_cid.trim() !== '') {
+            // Split by ',' and join with newline
+            cids = guildParams.noxp_cid
+            .split(',')
+            .map(id => id.trim()) // Erase spaces
+            .filter(id => id.length > 0) // Remove null
+            .map(id => `<#${id}>`) // Format mention
+            .join('\n');
+            cidCnt = guildParams.noxp_cid.split(',').length;
+        } else {
+            cids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+            cidCnt = 0
+        }
+
+        // Users Data
+        let uids;
+        let uidCnt;
+        if (guildParams.noxp_uid && guildParams.noxp_uid.trim() !== '') {
+            // Split by ',' and join with newline
+            uids = guildParams.noxp_uid
+            .split(',')
+            .map(id => id.trim()) // Erase spaces
+            .filter(id => id.length > 0) // Remove null
+            .map(id => `<@${id}>`) // Format mention
+            .join('\n');
+            uidCnt = guildParams.noxp_uid.split(',').length;
+        } else {
+            uids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+            uidCnt = 0
+        }
+
+        // Roles Data
+        let rids;
+        let ridCnt;
+        if (guildParams.noxp_rid && guildParams.noxp_rid.trim() !== '') {
+            // Split by ',', make mentionable format and join with newline
+            rids = guildParams.noxp_rid
+            .split(',')
+            .map(id => id.trim()) // Erase spaces
+            .filter(id => id.length > 0) // Remove null
+            .map(id => `<@&${id}>`) // Format mention
+            .join('\n');
+            ridCnt = guildParams.noxp_rid.split(',').length;
+        } else {
+            rids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
+            ridCnt = 0
+        }
+
+        data = [
+            `## 💬 ${(lang !== null) ? getL(lang, 'channels') : 'Channels'} (${cidCnt}/${Expify.maxNoxpCid})`,
+            cids,
+            `## 👥 ${(lang !== null) ? getL(lang, 'users') : 'Users'} (${uidCnt}/${Expify.maxNoxpUid})`,
+            uids,
+            `## 🏷️ ${(lang !== null) ? getL(lang, 'roles') : 'Roles'} (${ridCnt}/${Expify.maxNoxpRid})`,
+            rids
+        ]
+        .join('\n');
+
+        return { result: data, type: typeName };
+    };
     
     static fetchMembersWithRetry = async function(guild, retries = 5) {
         try {
@@ -256,85 +392,11 @@ class Expify {
             ]
             .join('\n');
         } else if (type === 'noxp') {
-            typeName = (lang !== null) ? `${getL(lang, 'noxpentities')}` : 'NoXP entities';
-            let getSettings;
-            let guildParams;
-            try {
-                // Get server settings
-                getSettings = db.prepare(`
-                    SELECT noxp_cid, noxp_uid, noxp_rid
-                    FROM guild_params WHERE guild_id = ?
-                `);
-                guildParams = getSettings.get(`${interaction.guildId}`)
-            } catch (err) {
-                console.error(`[GET] Error while loading guild configuration:`, err)
-            }
-
-            if (!guildParams) {
-                console.log(`[GET] Guild ${interaction.guildId} not found in DB`);
-                return await Lunar.editReply(interaction, `${getL('ru', 'guildnotfound')}`)
-            }
-
-            // Channels Data
-            let cids;
-            let cidCnt;
-            if (guildParams.noxp_cid && guildParams.noxp_cid.trim() !== '') {
-                // Split by ',' and join with newline
-                cids = guildParams.noxp_cid
-                .split(',')
-                .map(id => id.trim()) // Erase spaces
-                .filter(id => id.length > 0) // Remove null
-                .map(id => `<#${id}>`) // Format mention
-                .join('\n');
-                cidCnt = guildParams.noxp_cid.split(',').length;
-            } else {
-                cids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
-                cidCnt = 0
-            }
-
-            // Users Data
-            let uids;
-            let uidCnt;
-            if (guildParams.noxp_uid && guildParams.noxp_uid.trim() !== '') {
-                // Split by ',' and join with newline
-                uids = guildParams.noxp_uid
-                .split(',')
-                .map(id => id.trim()) // Erase spaces
-                .filter(id => id.length > 0) // Remove null
-                .map(id => `<@${id}>`) // Format mention
-                .join('\n');
-                uidCnt = guildParams.noxp_uid.split(',').length;
-            } else {
-                uids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
-                uidCnt = 0
-            }
-
-            // Roles Data
-            let rids;
-            let ridCnt;
-            if (guildParams.noxp_rid && guildParams.noxp_rid.trim() !== '') {
-                // Split by ',', make mentionable format and join with newline
-                rids = guildParams.noxp_rid
-                .split(',')
-                .map(id => id.trim()) // Erase spaces
-                .filter(id => id.length > 0) // Remove null
-                .map(id => `<@&${id}>`) // Format mention
-                .join('\n');
-                ridCnt = guildParams.noxp_rid.split(',').length;
-            } else {
-                rids = `${(lang !== null) ? getL(lang, 'listempty') : 'List Empty'}`;
-                ridCnt = 0
-            }
-
-            data = [
-                `## 💬 ${(lang !== null) ? getL(lang, 'channels') : 'Channels'} (${cidCnt}/${Expify.maxNoxpCid})`,
-                cids,
-                `## 👥 ${(lang !== null) ? getL(lang, 'users') : 'Users'} (${uidCnt}/${Expify.maxNoxpUid})`,
-                uids,
-                `## 🏷️ ${(lang !== null) ? getL(lang, 'roles') : 'Roles'} (${ridCnt}/${Expify.maxNoxpRid})`,
-                rids
-            ]
-            .join('\n');
+            const request = await Expify.getNoxpData(interaction, lang);
+            if (!request.result) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'operationerr')}`); }
+            if (request.result === 'guildnotfound') { return await Lunar.editReply(interaction, `${getL('ru', 'guildnotfound')}`) }
+            data = request.result;
+            typeName = request.type;
         } else if (type === 'reward') {
             typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
             footer = `⌨️: ${(lang !== null) ? getL(lang, 'textxp') : 'Text XP'}, 🎙️: ${(lang !== null) ? getL(lang, 'voicexp') : 'Voice XP'}, 🎦: ${(lang !== null) ? getL(lang, 'videoxp') : 'Video XP'}`
@@ -359,7 +421,7 @@ class Expify {
         } catch (err) {
             console.error(`[TOGGLE] Error while toggling xp on ${interaction.guildId}:`, err)
         }
-        // Get new state for reply. Returns [object Object] so we need to get new state as { [type]: newState } to get integer
+        // Get new state for reply
         const newState = db.prepare(`SELECT ${type} FROM guild_params WHERE guild_id = ?`).get(interaction.guildId);
 
         // Check if undefined
@@ -379,6 +441,10 @@ class Expify {
         let quantity = interaction.options.getInteger('quantity');
         let dbtype;
         let status;
+
+        // Check if guild not exist
+        const probe = db.prepare("SELECT text_xp_rate FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) }
 
         // To XP rate
         if (type === 'text_xp') {dbtype = 'text_xp_rate'} else if (type === 'voice_xp') {dbtype = 'voice_xp_rate'} else if (type === 'video_xp') {dbtype = 'video_xp_rate'}
@@ -509,6 +575,10 @@ class Expify {
         const migrate = db.prepare(`SELECT migrate_1 FROM guild_limits WHERE guild_id = ?`).get(interaction.guildId);
         const lastMigration = migrate?.migrate_1 ?? 0;
         if (lastMigration && lastMigration + Expify.cooldownMigrate > startTime) { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'cooldowndetected')} <t:${Math.floor((lastMigration + Expify.cooldownMigrate) / 1000)}:F>`); }
+
+        // Check if guild not exist
+        const probe = db.prepare("SELECT text_xp_rate FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) }
 
         const guildId = interaction.guildId;
         let errorcnt = 0;
@@ -756,6 +826,10 @@ class Expify {
         const rewardRole = interaction.options.getRole('role');
         const rewardRoleId = rewardRole.id
         let newId;
+
+        // Check if guild not exist
+        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) }
 
         // Check if record already exists 
         const existing = db.prepare("SELECT id FROM role_rewards WHERE guild_id = ? AND role_id = ?")
@@ -1040,37 +1114,91 @@ class Expify {
         await Lunar.editReply(interaction, status);
     };
 
-    static noxpCID = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
-        }
-        await Lunar.editReply(interaction, replycontent);
-    };
+    static noxpIDs = async function(interaction, lang) {
+        const startTime = Date.now();
 
-    static noxpUID = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
-        }
-        await Lunar.editReply(interaction, replycontent);
-    };
+        let object;
+        let type;
+        let limit;
+        let skipCheck = false;
+        let result;
+        let objectId;
+        const sub = interaction.options.getSubcommand();
+        if (sub === 'channel') {
+            type = 'noxp_cid'
+            object = interaction.options.getChannel('channel');
+            limit = 10;
+        } else if (sub === 'user') {
+            type = 'noxp_uid' 
+            object = interaction.options.getUser('user');
+            limit = 10;
+            skipCheck = true;
+        } else if (sub === 'role') {
+            type = 'noxp_rid'
+            object = interaction.options.getRole('role');
+            limit = 5;
+        } else if (sub === 'reset') {
+            skipCheck = true;
 
-    static noxpRID = async function(interaction, lang) {
-        //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `${getL(lang, 'indev')}`;
-        } else {
-            replycontent = `Work in progress`;
+            // Check confirmation
+            if (interaction.options.getString('confirmation') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
+            const resetedType = interaction.options.getString('type') ?? 'all';
+            if (resetedType === 'all') {
+                type = 'all'
+                Expify.toggleIgnoreChannel(interaction.guildId, 'noxp_cid', 0, 10, true);
+                Expify.toggleIgnoreChannel(interaction.guildId, 'noxp_uid', 0, 10, true);
+                result = Expify.toggleIgnoreChannel(interaction.guildId, 'noxp_rid', 0, 10, true);
+            } else {
+                type = resetedType
+                result = Expify.toggleIgnoreChannel(interaction.guildId, resetedType, 0, 10, true);
+            }
+        } else if (sub === 'list') {
+            const request = await Expify.getNoxpData(interaction, lang);
+            if (!request.result) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'operationerr')}`); }
+            if (request.result === 'guildnotfound') { return await Lunar.editReply(interaction, `${getL('ru', 'guildnotfound')}`) }
+            const data = request.result;
+            const typeName = request.type;
+
+            //Building response
+            const guildName = interaction.guild?.name ?? undefined;
+            const guildIcon = interaction.guild?.iconURL() ?? undefined;
+            const getEmbed = Lunar.createEmbed(typeName, data, null, 'ff6e6e', guildName, guildIcon)
+            console.log(`[noXP] GET noXP of ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+            return await Lunar.editReply(interaction, null, [getEmbed]);
         }
-        await Lunar.editReply(interaction, replycontent);
+        
+        if (!skipCheck) {
+            // Check if object not on the same server
+            if (object.guild.id !== interaction.guildId) {
+                return await Lunar.editReply(interaction, `⛔ ${(lang !== null) ? getL(lang, 'servermismatch') : 'Adding only objects from current server is allowed!'}`);
+            }
+        }
+
+        // If not reset
+        if (sub !== 'reset'){
+            // Object ID
+            objectId = object.id;
+
+            // Write in database
+            result = Expify.toggleIgnoreChannel(interaction.guildId, type, objectId, limit);
+        }
+
+        // Building response
+        if (result.success) {
+            console.log(`[noXP] Updated ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+            if (result.added) {
+                await Lunar.editReply(interaction, `🟢 ${getL(lang ?? 'ru', 'added')}`)
+            } else {
+                await Lunar.editReply(interaction, `🟢 ${getL(lang ?? 'ru', 'removed')}`)
+            }
+        } else {
+            console.log(`[noXP] Rejected ${type} for ${interaction.guildId}: ${result.reason}(${timeDiff(startTime)}ms)`)
+            if (result.reason === 'limit_reached') {
+                await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'noxplimit')}`)
+            } else if (result.reason === 'guild_missing') {
+                await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildnotfound')}`)
+            }
+        }
     };
 
     static top = async function(interaction, lang) {
