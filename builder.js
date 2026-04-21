@@ -321,16 +321,31 @@ class ExpifyBuiler {
             .setRequired(false)
         )
         .addBooleanOption(addPublicReply())
-    
+
+    static topcmd = new SlashCommandBuilder()
+        .setName('top')
+        .setDescription('🔗 Вывести топ сервера')
+        .setDescriptionLocalizations(getLoc('topcmd', '🔗 '))
+        .addStringOption(addXpTypeOption('Select XP type', 'xptype', true))
+        .addIntegerOption(option =>
+            option.setName('page')
+            .setNameLocalizations(getLoc('arg.page'))
+            .setDescription('Select Page')
+            .setDescriptionLocalizations(getLoc('selectpage'))
+            .setMinValue(1)
+            .setRequired(false)
+        )
+
     // Set default interactions access rules
     static {
-        setAvailable(this.ping)
-        setAdminsOnly(this.about)
-        setAdminsOnly(this.invite)
-        setAdminsOnly(this.expifycmd)
-        setAdminsOnly(this.rankcmd)
-        setAdminsOnly(this.rewardcmd)
-        setAdminsOnly(this.xpcmd)
+        setAvailable(this.ping);
+        setAdminsOnly(this.about);
+        setAdminsOnly(this.invite);
+        setAdminsOnly(this.expifycmd);
+        setAdminsOnly(this.rankcmd);
+        setAdminsOnly(this.rewardcmd);
+        setAdminsOnly(this.xpcmd);
+        setAdminsOnly(this.topcmd);
     }
 }; 
 
