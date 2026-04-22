@@ -1,12 +1,13 @@
 // Core can be started only by shard manager
-const corever = 'indev 121';
+const corever = '26.04.0b';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
 const { Expify } = require('./interactions.js');
 const { timeDiff } = require('./functions.js');
-const { db } = require('./dbManager.js')
-const { processXP, messageActivity } = require('./xpProcess.js')
+const { db } = require('./dbManager.js');
+const { processXP, messageActivity } = require('./xpProcess.js');
+const { processRewards } = require('./rewardProcess.js');
 
 // Require the necessary discord.js classes
 const { Client, Events, GatewayIntentBits, ActivityType, MessageFlags} = require('discord.js');
@@ -140,9 +141,25 @@ client.once(Events.ClientReady, async(readyClient) => {
     //Update presence every (x, ms)
     setInterval(presenceupdate, 1800000);
 
-    // XP processing cycle
+    // XP processing cycle cooldown
     const xpInterval = 60000;
+
+    // Rewards processing cycle cooldown
+    const rewardInterval = 5 * 60 * 1000;
     
+    // Loop reward Cycles
+    async function runRewardLoop() {
+        try {
+            await processRewards(client, db);
+        } catch (err) {
+            console.error('[REWARDS Loop] Error while processing iteration:', err);
+        } finally {
+            // Recursive call. Wait 300s after finishing past cycle
+            setTimeout(runRewardLoop, rewardInterval);
+        }
+    }
+
+    // Loop XP Cycles
     async function runXpLoop() {
         try {
             await processXP(client, db);
@@ -153,7 +170,9 @@ client.once(Events.ClientReady, async(readyClient) => {
             setTimeout(runXpLoop, xpInterval);
         }
     }
+
     runXpLoop();
+    runRewardLoop();
 });
 
 // Log in to Discord with your client's token

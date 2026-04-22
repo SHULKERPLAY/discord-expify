@@ -247,13 +247,23 @@ class ExpifyBuiler {
                 )
             )
             .addStringOption(option =>
-                option.setName('confirmation')
+                option.setName('confirmation_1')
                 .setNameLocalizations(getLoc('arg.confirmation_1'))
                 .setDescription('Select YES if you want to perform this action')
                 .setDescriptionLocalizations(getLoc('confirmationyes'))
                 .setRequired(true)
                 .addChoices(
                     addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+                )
+            )
+            .addStringOption(option =>
+                option.setName('confirmation_2')
+                .setNameLocalizations(getLoc('arg.confirmation_2'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
                 )
             )
         )

@@ -186,6 +186,29 @@ class Lunar {
             return false;
         }
     }
+    static hslToHex = function(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `${f(0)}${f(8)}${f(4)}`;
+    };
+
+    /** Get random cool color for embed in hsl */
+    static getRandomAestheticColor() {
+        // Hue: 0 to 360 (spectre)
+        const h = Math.floor(Math.random() * 360);
+        // Saturation
+        const s = 100;
+        // Lightness
+        const l = 70;
+
+        // Return string for EmbedBuilder().setColor()
+        return this.hslToHex(h, s, l);
+    };
 
     //Embed constructor
     static createEmbed(title, data, footer, color, author, authorIcon) {
@@ -193,7 +216,7 @@ class Lunar {
         // const authorurl = 'https://discord.com'
         
         //Check message length and truncate if necessary
-        const descriptioncontent = (data || '').length > 3800 ? data.substring(0, 3800) + "...\n```\nОтображаемый контент превышает 3800 символов!" : data;
+        const descriptioncontent = (data || '').length > 3800 ? data.substring(0, 3800) + "\n......" : data;
 
         const newembed = new EmbedBuilder()
             .setColor(color.trim() || '00c8ff')

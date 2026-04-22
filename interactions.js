@@ -966,7 +966,7 @@ class Expify {
         let status;
 
         // Check confirmation
-        if (interaction.options.getString('confirmation') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
+        if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
 
         // Check if guild not exist
         const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
