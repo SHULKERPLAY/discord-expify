@@ -632,10 +632,15 @@ class Expify {
                         hasRewardRole = true;
                         const reqs = rewardsMap.get(roleId);
                         
+                        // For less linear top use xp multiplier from x1 to x1.025 for every type
+                        const multiplier = () => { const random = Math.random() * (1.0250 - 1.0) + 1.0;
+                            return random;
+                        }
+
                         // Select maximum integer of every type
-                        maxText = Math.max(maxText, reqs.text);
-                        maxVoice = Math.max(maxVoice, reqs.voice);
-                        maxVideo = Math.max(maxVideo, reqs.video);
+                        maxText = Math.floor(Math.max(maxText, reqs.text) * multiplier());
+                        maxVoice = Math.floor(Math.max(maxVoice, reqs.voice) * multiplier());
+                        maxVideo = Math.floor(Math.max(maxVideo, reqs.video) * multiplier());
                     }
                 }
 
