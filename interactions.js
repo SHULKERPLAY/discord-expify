@@ -565,6 +565,38 @@ class Expify {
         await Lunar.editReply(interaction, replycontent);
     };
 
+    static expifyXpReset = async function(client, interaction, lang) {
+        let status;
+
+        // Check confirmation
+        if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes' || interaction.options.getString('confirmation_3') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
+        
+        const resetTime = Date.now();
+
+        // Check if guild not exist
+        const probe = db.prepare("SELECT admin_cid FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) };
+
+        console.log(`Resetting user progress of ${interaction.guildId} by ${interaction.user.id}`)
+        try {
+            const resetRewards = db.prepare(`DELETE FROM users WHERE guild_id = ?`);
+            resetRewards.run(`${interaction.guildId}`);
+            status = 'operationok'
+        } catch (err) {
+            status = 'operationerr'
+            console.error(`Error while resetting Guild ${interaction.guildId}:`, err);
+        }
+        console.log(`Reset user progress ${interaction.guildId}(${timeDiff(resetTime)}ms)`)
+
+        if (status === 'operationok' && probe.admin_cid && probe.admin_cid !== '0' ) {
+            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>: ${getL( lang ?? 'ru', 'resetxpcallback')}`);
+        }
+
+        //Building response
+        let replycontent = `${getL(lang ?? 'ru', `${status}`)}`;
+        await Lunar.editReply(interaction, replycontent);
+    };
+
     static expifyMigrate = async function(interaction, lang) {
         // Check confirmation
         if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
@@ -743,7 +775,7 @@ class Expify {
         }
 
         // If restricted and interaction not from allowed channel. Else default ephemeral behaviour
-        if (`${guildParams.rank_cid}` !== '0' && `${guildParams.rank_cid}` !== `${interaction.channelId}`) {
+        if (guildParams.rank_cid && `${guildParams.rank_cid}` != '0' && `${guildParams.rank_cid}` != `${interaction.channelId}`) {
             ephemeral = true
         } else if (`${guildParams.rank_cid}` === `${interaction.channelId}`) {
             ephemeral = false

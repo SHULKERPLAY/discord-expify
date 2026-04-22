@@ -135,6 +135,41 @@ class ExpifyBuiler {
                 )
             )
         )
+        .addSubcommand(subcommand =>
+            subcommand.setName('xp-reset')
+            .setDescription('🔗 Reset XP for all members (DANGEROUS!)')
+            .setDescriptionLocalizations(getLoc('expifyxpreset', '🔗 '))
+            .addStringOption(option =>
+                option.setName('confirmation_1')
+                .setNameLocalizations(getLoc('arg.confirmation_1'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+                )
+            )
+            .addStringOption(option =>
+                option.setName('confirmation_2')
+                .setNameLocalizations(getLoc('arg.confirmation_2'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
+                )
+            )
+            .addStringOption(option =>
+                option.setName('confirmation_3')
+                .setNameLocalizations(getLoc('arg.confirmation_3'))
+                .setDescription('Select YES if you want to perform this action')
+                .setDescriptionLocalizations(getLoc('confirmationyes'))
+                .setRequired(true)
+                .addChoices(
+                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+                )
+            )
+        )
 
     static rewardcmd = new SlashCommandBuilder()
         .setName('reward')
@@ -335,6 +370,7 @@ class ExpifyBuiler {
             .setMinValue(1)
             .setRequired(false)
         )
+        .addBooleanOption(addPublicReply())
 
     static noxpcmd = new SlashCommandBuilder()
         .setName('noxp')

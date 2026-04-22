@@ -12,6 +12,7 @@ const setAdminsOnly = (builder) => builder.setIntegrationTypes(0).setContexts(0)
 //decide if reply be ephemeral (publicreply: false / true)
 const addPublicReply = () => (option) => {
     option.setName('publicreply')
+    .setNameLocalizations(getLoc('arg.public'))
     .setDescription('Make the result visible to everyone in the chat')
     .setDescriptionLocalizations(getLoc('publicreply'))
     .setRequired(false);

@@ -163,6 +163,30 @@ class Lunar {
         }
     };
 
+    /** REQUIRED client AS FIRST ARG! Send message to specific channel. Return true if success */
+    static sendEvent = async function(client, channelId, content, embedcontent, hideembeds) {
+        if (!channelId) { return false }
+        const contentdata = (content || '').length > 1900 ? content.substring(0, 1900) + "...\n```\nОтображаемый контент превышает 1900 символов!" : content;
+        try {
+            const channel = await client.channels.fetch(channelId);
+            
+            if (!channel) return console.warn(`Channel ${channelId} not found`);
+            
+            // Check if channel text based
+            if (channel.isTextBased()) {
+                await channel.send({
+                    content: contentdata || '',
+                    embeds: embedcontent || [],
+                    flags: hideembeds ? [MessageFlags.SuppressEmbeds] : [],
+                });
+            }
+            return true;
+        } catch (error) {
+            console.error("Error while sending message:", error.message);
+            return false;
+        }
+    }
+
     //Embed constructor
     static createEmbed(title, data, footer, color, author, authorIcon) {
         // const authoricon = 'https://lunarcreators.ru/discordiconmini.webp'
