@@ -1,10 +1,12 @@
 // Core can be started only by shard manager
-const corever = 'indev 17';
+const corever = 'indev 119';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
 const { Expify } = require('./interactions.js');
 const { timeDiff } = require('./functions.js');
+const { db } = require('./dbManager.js')
+const { processXP, messageActivity } = require('./xpProcess.js')
 
 // Require the necessary discord.js classes
 const { Client, Events, GatewayIntentBits, ActivityType, MessageFlags} = require('discord.js');
@@ -12,7 +14,7 @@ const { token } = require('./config.json');
 
 // Create a new client instance
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates],
     rest: { timeout: 60000 } 
 });
 
@@ -90,6 +92,13 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
+// Send message to XP buffer
+client.on('messageCreate', async (message) => {
+    // Ignore bots and private DMs
+    if (message.author.bot || !message.guild) return;
+    messageActivity(message.guild.id, message.author.id, message.channel.id);
+});
+
 //actions as client ready
 client.once(Events.ClientReady, async(readyClient) => {
     //fetch application data
@@ -128,6 +137,21 @@ client.once(Events.ClientReady, async(readyClient) => {
     presenceupdate();
     //Update presence every (x, ms)
     setInterval(presenceupdate, 1800000);
+
+    // XP processing cycle
+    const xpInterval = 60000;
+    
+    async function runXpLoop() {
+        try {
+            await processXP(client, db);
+        } catch (err) {
+            console.error('[XP Loop] Error while processing iteration:', err);
+        } finally {
+            // Recursive call. Wait 60s after finishing past cycle
+            setTimeout(runXpLoop, xpInterval);
+        }
+    }
+    runXpLoop();
 });
 
 // Log in to Discord with your client's token

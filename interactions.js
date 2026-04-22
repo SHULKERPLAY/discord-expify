@@ -430,7 +430,7 @@ class Expify {
         //Building response
         let ltype;
         if (type === 'text_xp') {ltype = 'textxp'} else if (type === 'voice_xp') {ltype = 'voicexp'} else if (type === 'video_xp') {ltype = 'videoxp'}
-        const replycontent = `${(newState > 0) ? '🟢' : '🔴'} ${(lang !== null) ? getL(lang, ltype) : getL('ru', ltype)} ${(newState > 0) ? `${(lang !== null) ? getL(lang, 'enabled') : 'Enabled'}` : `${(lang !== null) ? getL(lang, 'disabled') : 'Disabled'}`}!`
+        const replycontent = `${(newState[type] > 0) ? '🟢' : '🔴'} ${(lang !== null) ? getL(lang, ltype) : getL('ru', ltype)} ${(newState[type] > 0) ? `${(lang !== null) ? getL(lang, 'enabled') : 'Enabled'}` : `${(lang !== null) ? getL(lang, 'disabled') : 'Disabled'}`}!`
         console.log(`Toggle ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
         await Lunar.editReply(interaction, replycontent);
     };
