@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = '26.04.0b';
+const corever = '26.04.0c';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -54,7 +54,7 @@ client.on('interactionCreate', async (interaction) => {
         } else if (sub === 'reset') {
             await Expify.expifyReset(interaction, lang);
         } else if (sub === 'migrate') {
-            await Expify.expifyMigrate(interaction, lang);
+            await Expify.expifyMigrate(client, interaction, lang);
         } else if (sub === 'migrate-help') {
             await Expify.expifyMigrateHelp(interaction, lang);
         } else if (sub === 'xp-reset') {

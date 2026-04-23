@@ -599,7 +599,7 @@ class Expify {
         await Lunar.editReply(interaction, replycontent);
     };
 
-    static expifyMigrate = async function(interaction, lang) {
+    static expifyMigrate = async function(client, interaction, lang) {
         // Check confirmation
         if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'guildresetabort')}`); }
 
@@ -611,7 +611,7 @@ class Expify {
         if (lastMigration && lastMigration + Expify.cooldownMigrate > startTime) { return await Lunar.editReply(interaction, `${getL(lang ?? 'ru', 'cooldowndetected')} <t:${Math.floor((lastMigration + Expify.cooldownMigrate) / 1000)}:F>`); }
 
         // Check if guild not exist
-        const probe = db.prepare("SELECT text_xp_rate FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const probe = db.prepare("SELECT admin_cid FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
         if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? 'ru', 'guildnotfound')}`) }
 
         const guildId = interaction.guildId;
@@ -733,14 +733,16 @@ class Expify {
         }
 
         //Building response
-        let replycontent;
-        if (lang) {
-            const l = (key) => getL(lang, key);
-            replycontent = `✅ ${l('migratecomplete')} **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n${l('operationerr')}: ${errorcnt}` : ' '}`;
-        } else {
-            replycontent = `✅ Sync Users XP with rewards completed! Users updated: **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n🔴 Operation completed with errors: ${errorcnt}` : ' '}`;
+        const l = (key) => getL(lang ?? 'ru', key);
+        let replycontent = `✅ ${l('migratecomplete')} **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n${l('operationerr')}: ${errorcnt}` : ' '}`;
+
+        console.log(`[MIGRATE] Updated ${usersToUpdate.length} users in ${interaction.guildId}(${timeDiff(startTime)}ms)`);
+
+        // Send notification
+        if (probe.admin_cid && probe.admin_cid !== '0' ) {
+            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>\n${replycontent}`);
         }
-        console.log(`[MIGRATE] Updated ${usersToUpdate.length} users in ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+
         await Lunar.editReply(interaction, replycontent);
     };
 
