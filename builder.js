@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
 const { getLoc } = require('./functions.js');
-const { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption, addTextChannelOption } = require('./helpers.js');
+const { setDefaultContext, setAvailable, setAdminOnly, setOwnerOnly, setModeratorOnly, setModeratorLite, addPublicReply, addConfirmationOption, addSimpleChoice, addXpTypeOption, addTextChannelOption } = require('./helpers.js');
 
 // Slash interactions builder
 class ExpifyBuiler {
@@ -16,42 +16,26 @@ class ExpifyBuiler {
 
     static invite = new SlashCommandBuilder()
         .setName('invite')
-        .setDescription('🔗 Want to install Expify app on your Server?')
-        .setDescriptionLocalizations(getLoc('installapp', '🔗 '))   
+        .setDescription('🚀 Want to install Expify app on your Server?')
+        .setDescriptionLocalizations(getLoc('installapp', '🚀 '))   
 
     static expifycmd = new SlashCommandBuilder()
         .setName('expify')
-        .setDescription('🔗 Administrative Guild Actions')
-        .setDescriptionLocalizations(getLoc('expifycmd', '🔗 '))
+        .setDescription('🛠️ Administrative Guild Actions')
+        .setDescriptionLocalizations(getLoc('expifycmd', '🛠️ '))
         .addSubcommand(subcommand =>
-            subcommand.setName('reset')
-            .setDescription('🔗 Reset Bot settings for this Guild (Not XP reset)')
-            .setDescriptionLocalizations(getLoc('expifyreset', '🔗 '))
-            .addStringOption(option =>
-                option.setName('confirmation_1')
-                .setNameLocalizations(getLoc('arg.confirmation_1'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
-                )
-            )
-            .addStringOption(option =>
-                option.setName('confirmation_2')
-                .setNameLocalizations(getLoc('arg.confirmation_2'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
-                )
+            addConfirmationOption(
+                subcommand
+                    .setName('reset')
+                    .setDescription('🗑️ Reset Bot settings for this Guild (Not XP reset)')
+                    .setDescriptionLocalizations(getLoc('expifyreset', '🗑️ ')),
+                2
             )
         )
         .addSubcommand(subcommand =>
             subcommand.setName('get')
-            .setDescription('🔗 Get your server settings data')
-            .setDescriptionLocalizations(getLoc('expifyget', '🔗 '))
+            .setDescription('🧩 Get your server settings data')
+            .setDescriptionLocalizations(getLoc('expifyget', '🧩 '))
             .addStringOption(option =>
                 option.setName('type')
                 .setNameLocalizations(getLoc('arg.type'))
@@ -68,14 +52,14 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('toggle')
-            .setDescription('🔗 Toggles available types of XP for your server')
-            .setDescriptionLocalizations(getLoc('expifytoggle', '🔗 '))
+            .setDescription('🧪 Toggles available types of XP for your server')
+            .setDescriptionLocalizations(getLoc('expifytoggle', '🧪 '))
             .addStringOption(addXpTypeOption('Select which type of XP you want to toggle', 'expifytogglesel', true))
         )
         .addSubcommand(subcommand =>
             subcommand.setName('gain')
-            .setDescription('🔗 Change how many XP users get per minute')
-            .setDescriptionLocalizations(getLoc('expifygain', '🔗 '))
+            .setDescription('💰 Change how many XP users get per minute')
+            .setDescriptionLocalizations(getLoc('expifygain', '💰 '))
             .addStringOption(addXpTypeOption('Select XP type to change', 'expifygaintype', true))
             .addIntegerOption(option =>
                 option.setName('quantity')
@@ -89,8 +73,8 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('channels')
-            .setDescription('🔗 Set Channel for ... . Leave blank to disable')
-            .setDescriptionLocalizations(getLoc('expifychannelfor', '🔗 '))
+            .setDescription('⚙️ Set Channel for ... . Leave blank to disable')
+            .setDescriptionLocalizations(getLoc('expifychannelfor', '⚙️ '))
             .addStringOption(option =>
                 option.setName('type')
                 .setNameLocalizations(getLoc('arg.type'))
@@ -107,78 +91,36 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('migrate-help')
-            .setDescription('🔗 RECOMENDED TO READ IF YOU WANT TO USE (/expify migrate)!')
-            .setDescriptionLocalizations(getLoc('expifymigratehelpdesc', '🔗 '))
+            .setDescription('❗❗ RECOMENDED TO READ IF YOU WANT TO USE (/expify migrate)!')
+            .setDescriptionLocalizations(getLoc('expifymigratehelpdesc', '❗❗ '))
         )
         .addSubcommand(subcommand =>
-            subcommand.setName('migrate')
-            .setDescription('🔗 Set XP according to existing rewards to all users (Read /expify migrate-help first)')
-            .setDescriptionLocalizations(getLoc('expifymigratedesc', '🔗 '))
-            .addStringOption(option =>
-                option.setName('confirmation_1')
-                .setNameLocalizations(getLoc('arg.confirmation_1'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
-                )
-            )
-            .addStringOption(option =>
-                option.setName('confirmation_2')
-                .setNameLocalizations(getLoc('arg.confirmation_2'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
-                )
+            addConfirmationOption(
+                subcommand
+                    .setName('migrate')
+                    .setDescription('📤 Set XP according to existing rewards to all users (Read /expify migrate-help first)')
+                    .setDescriptionLocalizations(getLoc('expifymigratedesc', '📤 ')),
+                2
             )
         )
         .addSubcommand(subcommand =>
-            subcommand.setName('xp-reset')
-            .setDescription('🔗 Reset XP for all members (DANGEROUS!)')
-            .setDescriptionLocalizations(getLoc('expifyxpreset', '🔗 '))
-            .addStringOption(option =>
-                option.setName('confirmation_1')
-                .setNameLocalizations(getLoc('arg.confirmation_1'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
-                )
-            )
-            .addStringOption(option =>
-                option.setName('confirmation_2')
-                .setNameLocalizations(getLoc('arg.confirmation_2'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
-                )
-            )
-            .addStringOption(option =>
-                option.setName('confirmation_3')
-                .setNameLocalizations(getLoc('arg.confirmation_3'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
-                )
+            addConfirmationOption(
+                subcommand
+                    .setName('xp-reset')
+                    .setDescription('☢️ Reset XP for all members (DANGEROUS!)')
+                    .setDescriptionLocalizations(getLoc('expifyxpreset', '☢️ ')),
+                3
             )
         )
 
     static rewardcmd = new SlashCommandBuilder()
         .setName('reward')
-        .setDescription('🔗 Manage Guild rewards')
-        .setDescriptionLocalizations(getLoc('rewardscmd', '🔗 '))
+        .setDescription('🏆 Manage Guild rewards')
+        .setDescriptionLocalizations(getLoc('rewardscmd', '🏆 '))
         .addSubcommand(subcommand =>
             subcommand.setName('add')
-            .setDescription('🔗 Add Reward for reaching one or multiple level conditions. Select assigned role reward to update')
-            .setDescriptionLocalizations(getLoc('rewardsadd', '🔗 '))
+            .setDescription('🏆 Add Reward for reaching one or multiple level conditions. Select assigned role reward to update')
+            .setDescriptionLocalizations(getLoc('rewardsadd', '🏆 '))
             .addRoleOption(option =>
                 option.setName('role')
                 .setNameLocalizations(getLoc('arg.role'))
@@ -216,8 +158,8 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('remove')
-            .setDescription('🔗 Remove reward by ID (You can check ID with: /reward list)')
-            .setDescriptionLocalizations(getLoc('rewardsremove', '🔗 '))
+            .setDescription('🗑️ Remove reward by ID (You can check ID with: /reward list)')
+            .setDescriptionLocalizations(getLoc('rewardsremove', '🗑️ '))
             .addIntegerOption(option =>
                 option.setName('id')
                 .setDescription('Type reward ID')
@@ -228,43 +170,27 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('list')
-            .setDescription('🔗 Get all rewards list')
-            .setDescriptionLocalizations(getLoc('rewardslist', '🔗 '))
+            .setDescription('📜 Get all rewards list')
+            .setDescriptionLocalizations(getLoc('rewardslist', '📜 '))
         )
         .addSubcommand(subcommand =>
-            subcommand.setName('mode')
-            .setDescription('🔗 Change reward mode')
-            .setDescriptionLocalizations(getLoc('rewardmodedesc', '🔗 '))
-            .addStringOption(option =>
-                option.setName('type')
-                .setNameLocalizations(getLoc('arg.type'))
-                .setDescription('Select reward mode')
-                .setDescriptionLocalizations(getLoc('rewardmodedesc'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('Save all rewards (Default)', 'all', 'rewardmodeall'),
-                    addSimpleChoice('Save rewards for multiple xp types and only top rewards for single xp type', 'top', 'rewardmodetoponly')
-                )
-            )
-            .addStringOption(option =>
-                option.setName('confirmation_1')
-                .setNameLocalizations(getLoc('arg.confirmation_1'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
-                )
-            )
-            .addStringOption(option =>
-                option.setName('confirmation_2')
-                .setNameLocalizations(getLoc('arg.confirmation_2'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
-                )
+            addConfirmationOption(
+                subcommand
+                    .setName('mode')
+                    .setDescription('🔄 Change reward mode')
+                    .setDescriptionLocalizations(getLoc('rewardmodedesc', '🔄 '))
+                    .addStringOption(option =>
+                        option.setName('type')
+                        .setNameLocalizations(getLoc('arg.type'))
+                        .setDescription('Select reward mode')
+                        .setDescriptionLocalizations(getLoc('rewardmodedesc'))
+                        .setRequired(true)
+                        .addChoices(
+                            addSimpleChoice('Save all rewards (Default)', 'all', 'rewardmodeall'),
+                            addSimpleChoice('Save rewards for multiple xp types and only top rewards for single xp type', 'top', 'rewardmodetoponly')
+                        )
+                    ),
+                2
             )
         )
 
@@ -274,8 +200,8 @@ class ExpifyBuiler {
         .setDescriptionLocalizations(getLoc('xprelated', '🔗 '))
         .addSubcommand(subcommand =>
             subcommand.setName('set')
-            .setDescription('🔗 Set user XP')
-            .setDescriptionLocalizations(getLoc('xpset', '🔗 '))
+            .setDescription('🎯 Set user XP')
+            .setDescriptionLocalizations(getLoc('xpset', '🎯 '))
             .addUserOption(option =>
                 option.setName('user')
                 .setNameLocalizations(getLoc('arg.user'))
@@ -296,8 +222,8 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('add')
-            .setDescription('🔗 Add XP to user')
-            .setDescriptionLocalizations(getLoc('xpadd', '🔗 '))
+            .setDescription('✨ Add XP to user')
+            .setDescriptionLocalizations(getLoc('xpadd', '✨ '))
             .addUserOption(option =>
                 option.setName('user')
                 .setNameLocalizations(getLoc('arg.user'))
@@ -318,8 +244,8 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('reset')
-            .setDescription('🔗 Reset XP of user. Do not specify type to reset all types')
-            .setDescriptionLocalizations(getLoc('xpreset', '🔗 '))
+            .setDescription('🗑️ Reset XP of user. Do not specify type to reset all types')
+            .setDescriptionLocalizations(getLoc('xpreset', '🗑️ '))
             .addUserOption(option =>
                 option.setName('user')
                 .setNameLocalizations(getLoc('arg.user'))
@@ -331,8 +257,8 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('calc')
-            .setDescription('🔗 Calculate XP to Level or Level to XP')
-            .setDescriptionLocalizations(getLoc('xpcalc', '🔗 '))
+            .setDescription('♾️ Calculate XP to Level or Level to XP')
+            .setDescriptionLocalizations(getLoc('xpcalc', '♾️ '))
             .addStringOption(option =>
                 option.setName('action')
                 .setNameLocalizations(getLoc('arg.action'))
@@ -356,8 +282,8 @@ class ExpifyBuiler {
 
     static rankcmd = new SlashCommandBuilder()
         .setName('rank')
-        .setDescription('🔗 Check your or another user rank')
-        .setDescriptionLocalizations(getLoc('rankcmd', '🔗 '))
+        .setDescription('📊 Check your or another user rank')
+        .setDescriptionLocalizations(getLoc('rankcmd', '📊 '))
         .addUserOption(option =>
             option.setName('user')
             .setNameLocalizations(getLoc('arg.user'))
@@ -369,8 +295,8 @@ class ExpifyBuiler {
 
     static topcmd = new SlashCommandBuilder()
         .setName('top')
-        .setDescription('🔗 Display top XP Users')
-        .setDescriptionLocalizations(getLoc('topcmd', '🔗 '))
+        .setDescription('🥇 Display top XP Users')
+        .setDescriptionLocalizations(getLoc('topcmd', '🥇 '))
         .addStringOption(addXpTypeOption('Select XP type', 'xptype', true))
         .addIntegerOption(option =>
             option.setName('page')
@@ -384,12 +310,12 @@ class ExpifyBuiler {
 
     static noxpcmd = new SlashCommandBuilder()
         .setName('noxp')
-        .setDescription('🔗 Set Objects which needed to exclude from gaining XP')
-        .setDescriptionLocalizations(getLoc('noxpcmd', '🔗 '))
+        .setDescription('⛔ Set Objects which needed to exclude from gaining XP')
+        .setDescriptionLocalizations(getLoc('noxpcmd', '⛔ '))
         .addSubcommand(subcommand =>
             subcommand.setName('channel')
-            .setDescription('🔗 Add NoXP channel. Select same for removing it from NoXP list')
-            .setDescriptionLocalizations(getLoc('noxpchannel', '🔗 '))
+            .setDescription('⛔ Add NoXP channel. Select same for removing it from NoXP list')
+            .setDescriptionLocalizations(getLoc('noxpchannel', '⛔ '))
             .addChannelOption(option =>
                 option.setName('channel')
                 .setNameLocalizations(getLoc('arg.channel'))
@@ -400,8 +326,8 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('user')
-            .setDescription('🔗 Add NoXP User. Select same for removing it from NoXP list')
-            .setDescriptionLocalizations(getLoc('noxpuser', '🔗 '))
+            .setDescription('⛔ Add NoXP User. Select same for removing it from NoXP list')
+            .setDescriptionLocalizations(getLoc('noxpuser', '⛔ '))
             .addUserOption(option =>
                 option.setName('user')
                 .setNameLocalizations(getLoc('arg.user'))
@@ -412,8 +338,8 @@ class ExpifyBuiler {
         )
         .addSubcommand(subcommand =>
             subcommand.setName('role')
-            .setDescription('🔗 Add NoXP Role. Select same for removing it from NoXP list')
-            .setDescriptionLocalizations(getLoc('noxprole', '🔗 '))
+            .setDescription('⛔ Add NoXP Role. Select same for removing it from NoXP list')
+            .setDescriptionLocalizations(getLoc('noxprole', '⛔ '))
             .addRoleOption(option =>
                 option.setName('role')
                 .setNameLocalizations(getLoc('arg.role'))
@@ -423,50 +349,55 @@ class ExpifyBuiler {
             )
         )
         .addSubcommand(subcommand =>
-            subcommand.setName('reset')
-            .setDescription('🔗 Reset selected list of NoXP objects')
-            .setDescriptionLocalizations(getLoc('noxpreset', '🔗 '))
-            .addStringOption(option =>
-                option.setName('type')
-                .setNameLocalizations(getLoc('arg.type'))
-                .setDescription('Select which list needed to reset')
-                .setDescriptionLocalizations(getLoc('noxpresetobj'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('Channels', 'noxp_cid', 'channels'),
-                    addSimpleChoice('Users', 'noxp_uid', 'users'),
-                    addSimpleChoice('Roles', 'noxp_rid', 'roles'),
-                    addSimpleChoice('All', 'all', 'all'),
-                )
-            )
-            .addStringOption(option =>
-                option.setName('confirmation')
-                .setNameLocalizations(getLoc('arg.confirmation_1'))
-                .setDescription('Select YES if you want to perform this action')
-                .setDescriptionLocalizations(getLoc('confirmationyes'))
-                .setRequired(true)
-                .addChoices(
-                    addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
-                )
+            addConfirmationOption(
+                subcommand
+                    .setName('reset')
+                    .setDescription('🗑️ Reset selected list of NoXP objects')
+                    .setDescriptionLocalizations(getLoc('noxpreset', '🗑️ '))
+                    .addStringOption(option =>
+                        option.setName('type')
+                        .setNameLocalizations(getLoc('arg.type'))
+                        .setDescription('Select which list needed to reset')
+                        .setDescriptionLocalizations(getLoc('noxpresetobj'))
+                        .setRequired(true)
+                        .addChoices(
+                            addSimpleChoice('Channels', 'noxp_cid', 'channels'),
+                            addSimpleChoice('Users', 'noxp_uid', 'users'),
+                            addSimpleChoice('Roles', 'noxp_rid', 'roles'),
+                            addSimpleChoice('All', 'all', 'all'),
+                        )
+                    ),
+                1
             )
         )
         .addSubcommand(subcommand =>
             subcommand.setName('list')
-            .setDescription('🔗 Get noXP objects list')
-            .setDescriptionLocalizations(getLoc('noxplist', '🔗 '))
+            .setDescription('📝 Get noXP objects list')
+            .setDescriptionLocalizations(getLoc('noxplist', '📝 '))
         )
 
     // Set default interactions access rules
     static {
         setAvailable(this.ping);
-        setAdminsOnly(this.about);
-        setAdminsOnly(this.invite);
-        setAdminsOnly(this.expifycmd);
-        setAdminsOnly(this.rankcmd);
-        setAdminsOnly(this.rewardcmd);
-        setAdminsOnly(this.xpcmd);
-        setAdminsOnly(this.topcmd);
-        setAdminsOnly(this.noxpcmd);
+        setAvailable(this.about);
+        setAvailable(this.invite);
+        setAvailable(this.rankcmd);
+        setModeratorLite(this.topcmd);
+        setModeratorOnly(this.rewardcmd);
+        setModeratorOnly(this.xpcmd);
+        setModeratorOnly(this.noxpcmd);
+        setAdminOnly(this.expifycmd);
+
+        //Set Context
+        setDefaultContext(this.ping);
+        setDefaultContext(this.about);
+        setDefaultContext(this.invite);
+        setDefaultContext(this.expifycmd);
+        setDefaultContext(this.rankcmd);
+        setDefaultContext(this.rewardcmd);
+        setDefaultContext(this.xpcmd);
+        setDefaultContext(this.topcmd);
+        setDefaultContext(this.noxpcmd);
     }
 }; 
 

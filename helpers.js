@@ -1,12 +1,16 @@
 const { getLoc } = require('./functions.js');
-const { ChannelType } = require('discord.js');
+const { ChannelType, PermissionFlagsBits } = require('discord.js');
 
 //Helpers
 //.setDefaultMemberPermissions(0) restricts usage to admins only. 
 //.setContexts(0, 1, 2) 0 - Can be used in server channels, 1 - Can be used in DM with app's bot user, 2 - Can be used in private channels without inviting the bot
 //.setIntegrationTypes(0, 1) - 0 - Can be used with bot installed on server, 1 - can be used with bot installed as User App
-const setAvailable = (builder) => builder.setIntegrationTypes(0).setContexts(0);
-const setAdminsOnly = (builder) => builder.setIntegrationTypes(0).setContexts(0).setDefaultMemberPermissions(0);
+const setDefaultContext = (builder) => builder.setIntegrationTypes(0).setContexts(0);
+const setAvailable = (builder) => builder.setDefaultMemberPermissions(null);
+const setOwnerOnly = (builder) => builder.setDefaultMemberPermissions(0);
+const setAdminOnly = (builder) => builder.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const setModeratorOnly = (builder) => builder.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles);
+const setModeratorLite = (builder) => builder.setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages);
 
 
 //decide if reply be ephemeral (publicreply: false / true)
@@ -44,6 +48,48 @@ const addXpTypeOption = (description = ' ', descriptionKey = ' ', isrequired = f
     return option;
 };
 
+// Confirmation option
+const addConfirmationOption = (builder, count = 1, description = 'Select YES if you want to perform this action', descriptionKey = 'confirmationyes', isrequired = true) => {
+    if (count > 0) {
+        builder.addStringOption(option =>
+            option.setName('confirmation_1')
+            .setNameLocalizations(getLoc('arg.confirmation_1'))
+            .setDescription(`${description}`)
+            .setDescriptionLocalizations(getLoc(`${descriptionKey}`))
+            .setRequired(isrequired)
+            .addChoices(
+                addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+            )
+        )
+    };
+    if (count > 1) {
+        builder.addStringOption(option =>
+            option.setName('confirmation_2')
+            .setNameLocalizations(getLoc('arg.confirmation_2'))
+            .setDescription(`${description}`)
+            .setDescriptionLocalizations(getLoc(`${descriptionKey}`))
+            .setRequired(isrequired)
+            .addChoices(
+                addSimpleChoice('Yes', 'Yes', 'yes'), addSimpleChoice('No', 'No', 'no')
+            )
+        )
+    };
+    if (count > 2) {
+        builder.addStringOption(option =>
+            option.setName('confirmation_3')
+            .setNameLocalizations(getLoc('arg.confirmation_3'))
+            .setDescription(`${description}`)
+            .setDescriptionLocalizations(getLoc(`${descriptionKey}`))
+            .setRequired(isrequired)
+            .addChoices(
+                addSimpleChoice('No', 'No', 'no'), addSimpleChoice('Yes', 'Yes', 'yes')
+            )
+        )
+    };
+    
+    return builder;
+};
+
 // Text Channel Options
 const addTextChannelOption = (description = ' ', descriptionKey = ' ', isrequired = false) => (option) => {
     option.setName('channel')
@@ -57,4 +103,4 @@ const addTextChannelOption = (description = ' ', descriptionKey = ' ', isrequire
 };
 
 //export
-module.exports = { setAvailable, setAdminsOnly, addPublicReply, addSimpleChoice, addXpTypeOption, addTextChannelOption };
+module.exports = { setDefaultContext, setAvailable, setAdminOnly, setOwnerOnly, setModeratorOnly, setModeratorLite, addPublicReply, addConfirmationOption, addSimpleChoice, addXpTypeOption, addTextChannelOption };

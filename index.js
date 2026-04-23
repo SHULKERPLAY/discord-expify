@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = '26.04.0c';
+const corever = '26.04.0e';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -102,6 +102,11 @@ client.on('messageCreate', async (message) => {
     messageActivity(message.guild.id, message.author.id, message.channel.id);
 });
 
+client.on('guildCreate', (guild) => {
+    // Init guild in database
+    Expify.guildCreate(guild.id)
+});
+
 //actions as client ready
 client.once(Events.ClientReady, async(readyClient) => {
     //fetch application data
@@ -113,17 +118,30 @@ client.once(Events.ClientReady, async(readyClient) => {
     //index init
     let currentIndex = 0;
 
+    // Time to update presence status
+    const presenceInterval = 30 * 60 * 1000;
+
     function presenceupdate() {
         //check if client ready
         if (!client.user) return;
 
         // Update presence only by first shard!
         if (client.shard && client.shard.ids[0] !== 0) return;
+        
+        // Count active users for presence status
+        let activeCount;
+        if (currentIndex === 1) {
+            activeCount = db.prepare(`
+                SELECT COUNT(*) as total 
+                FROM users 
+                WHERE last_updated > ?
+            `).get(Date.now() - presenceInterval).total;
+        }
 
         //Bot Presence List
         const presencelist = [
             { name: `🔮 Версия ядра • ${corever}`, type: ActivityType.Streaming },
-            { name: `🔮 Индекс • ${currentIndex}`, type: ActivityType.Streaming }
+            { name: `💥 Активно аккаунтов • ${activeCount}`, type: ActivityType.Streaming }
         ];
 
         //Set Presence
@@ -139,7 +157,7 @@ client.once(Events.ClientReady, async(readyClient) => {
     //Update presence on Login
     presenceupdate();
     //Update presence every (x, ms)
-    setInterval(presenceupdate, 1800000);
+    setInterval(presenceupdate, presenceInterval);
 
     // XP processing cycle cooldown
     const xpInterval = 60000;
