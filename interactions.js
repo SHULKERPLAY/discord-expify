@@ -128,8 +128,9 @@ class Expify {
         return { success: true, added: !isPresent }; // Return true if added, and false if deleted
     };
 
-    /* Common method for getting all guild rewards for description field of embed message.
-     * Usage is: data = Expify.getRewardsEmbedData(interaction, lang) */
+    /** Common method for getting all guild rewards for description field of embed message.
+     * Usage is: data = Expify.getRewardsEmbedData(interaction, lang)
+     * Returns { data: description, count: rewards.count } */
     static getRewardsEmbedData(interaction, lang) {
         let getRewards;
         let rewards;
@@ -137,7 +138,7 @@ class Expify {
 
         // Check if guild not exist
         const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
-        if (!params) { return `${getL( lang ?? 'ru', 'guildnotfound')}` }
+        if (!params) { return { data: `${getL( lang ?? 'ru', 'guildnotfound')}`, count: 0 }}
 
         try {
             // Get rewards for guild
@@ -169,7 +170,7 @@ class Expify {
             }).join('\n');
         }
 
-        return `${data}\n### ${getL( lang ?? 'ru', 'rewardmode')}\n${(params.reward_mode > 0) ? getL( lang ?? 'ru', 'rewardmodetoponly') : getL( lang ?? 'ru', 'rewardmodeall')}`;
+        return { data: `${data}\n### ⚡ ${getL( lang ?? 'ru', 'rewardmode')}\n${(params.reward_mode > 0) ? getL( lang ?? 'ru', 'rewardmodetoponly') : getL( lang ?? 'ru', 'rewardmodeall')}`, count: rewards.length };
     }
 
     static getNoxpData = async function(interaction, lang) {
@@ -398,9 +399,10 @@ class Expify {
             data = request.result;
             typeName = request.type;
         } else if (type === 'reward') {
-            typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
+            const rewards = Expify.getRewardsEmbedData(interaction, lang); 
+            typeName = `🎖️ ${(lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards'} (${rewards.count}/${Expify.maxRewards})`;
             footer = `⌨️: ${(lang !== null) ? getL(lang, 'textxp') : 'Text XP'}, 🎙️: ${(lang !== null) ? getL(lang, 'voicexp') : 'Voice XP'}, 🎦: ${(lang !== null) ? getL(lang, 'videoxp') : 'Video XP'}`
-            data = Expify.getRewardsEmbedData(interaction, lang);
+            data = rewards.data;
         }
 
         //Building response
@@ -948,8 +950,9 @@ class Expify {
 
     static rewardList = async function(interaction, lang) {
         const startTime = Date.now();
-        const typeName = (lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards';
-        const data = Expify.getRewardsEmbedData(interaction, lang);
+        const rewards = Expify.getRewardsEmbedData(interaction, lang);
+        const typeName = `🎖️ ${(lang !== null) ? `${getL(lang, 'rewards')}` : 'Rewards'} (${rewards.count}/${Expify.maxRewards})`;
+        const data = rewards.data;
 
         //Building response
         const guildName = interaction.guild?.name ?? undefined;
