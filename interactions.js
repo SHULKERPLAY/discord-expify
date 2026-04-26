@@ -1,9 +1,7 @@
-const { timeDiff, getL, renderProgressBar, calculatePercentage, Lunar, XpLeveling } = require('./functions.js');
+const { timeDiff, getL, renderProgressBar, calculatePercentage, Lunar, XpLeveling, supportedlocales, dLang } = require('./functions.js');
 const { MessageFlags } = require('discord.js');
 const { db } = require('./dbManager.js')
-
-/** Default Language code */
-const dLang = 'ru'
+const { manageRoles } = require('./rewardProcess.js')
 
 // Discord User Interactions
 class Expify {
@@ -31,6 +29,8 @@ class Expify {
     static maxUserLevel = XpLeveling.getLevel(this.maxUserXp);
     /** Migrate cooldown */
     static cooldownMigrate = 3600000 * 24 * 7;
+    /** Reward Cleanup cooldown */
+    static cooldownRewardCleanup = 3600000 * 24 * 7;
 
     /** Update guild_params object in database
      * @param {string} type - Column Name (example: 'text_xp')
@@ -284,7 +284,7 @@ class Expify {
             }
             console.error(`Error while fetching members of ${guild.id}:`, error.message); // If no left retries or other error
         }
-    }
+    };
 
     static guildCreate = function(guildId) {
         if (!guildId) { return }
@@ -585,7 +585,7 @@ class Expify {
         const resetTime = Date.now();
 
         // Check if guild not exist
-        const probe = db.prepare("SELECT admin_cid FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
         if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
         console.log(`Resetting user progress of ${interaction.guildId} by ${interaction.user.id}`)
@@ -600,7 +600,7 @@ class Expify {
         console.log(`Reset user progress ${interaction.guildId}(${timeDiff(resetTime)}ms)`)
 
         if (status === 'operationok' && probe.admin_cid && probe.admin_cid !== '0' ) {
-            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>: ${getL( lang ?? dLang, 'resetxpcallback')}`);
+            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>: ${getL(probe.lang ?? dLang, 'resetxpcallback')}`);
         }
 
         //Building response
@@ -614,14 +614,14 @@ class Expify {
 
         const startTime = Date.now();
 
+        // Check if guild not exist
+        const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
+
         // Check if cooldown
         const migrate = db.prepare(`SELECT migrate_1 FROM guild_limits WHERE guild_id = ?`).get(interaction.guildId);
         const lastMigration = migrate?.migrate_1 ?? 0;
         if (lastMigration && lastMigration + Expify.cooldownMigrate > startTime) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'cooldowndetected')} <t:${Math.floor((lastMigration + Expify.cooldownMigrate) / 1000)}:F>`); }
-
-        // Check if guild not exist
-        const probe = db.prepare("SELECT admin_cid FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
-        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
         const guildId = interaction.guildId;
         let errorcnt = 0;
@@ -658,10 +658,14 @@ class Expify {
         // Fetch ALL Guild members
         members = await Expify.fetchMembersWithRetry(interaction.guild);
 
+        // Check if members missing
+        if (!members) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'operationerr')}`); }
+
         // Collecting Userdata into array
         const usersToUpdate = [];
-        try {
-            for (const [memberId, member] of members) {
+        
+        for (const [memberId, member] of members) {
+            try {
                 if (member.user.bot) continue; // Bots are noXP
 
                 let maxText = 0;
@@ -697,10 +701,10 @@ class Expify {
                         video_xp: maxVideo
                     });
                 }
+            } catch (err) {
+                console.error(`[MIGRATE] Error in userdata array ${guildId}:`, err);
+                errorcnt = ++errorcnt;
             }
-        } catch (err) {
-            console.error(`[MIGRATE] Error in userdata array ${guildId}:`, err);
-            errorcnt = ++errorcnt;
         }
 
         // Write all collected data into database using transaction
@@ -749,7 +753,8 @@ class Expify {
 
         // Send notification
         if (probe.admin_cid && probe.admin_cid !== '0' ) {
-            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>\n${replycontent}`);
+            const ld = (key) => getL(probe.lang ?? dLang, key);
+            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>\n✅ ${ld('migratecomplete')} **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n${ld('operationerr')}: ${errorcnt}` : ' '}`);
         }
 
         await Lunar.editReply(interaction, replycontent);
@@ -757,14 +762,133 @@ class Expify {
 
     static expifyMigrateHelp = async function(interaction, lang, isephemeral) {
         //Building response
-        let replycontent;
-        if (lang) {
-            replycontent = `✅ ${getL(lang, 'expifymigratehelp')}`;
-        } else {
-            replycontent = `✅ ${getL(lang ?? dLang, 'expifymigratehelp')}`;
-        }
+        let replycontent = `✅ ${getL(lang ?? dLang, 'expifymigratehelp')}`;
         await Lunar.editReply(interaction, replycontent, null, true);
-    }
+    };
+
+    /** Check and remove roles from users that not match requirements */
+    static expifyCleanupRewards = async function (client, interaction, lang) {
+        const startTime = Date.now();
+
+        // Check confirmation
+        if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
+        const guild = interaction.guild;
+
+        // Check if guild not exist
+        const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
+
+        // Check if cooldown
+        const cooldown = db.prepare(`SELECT reward_cleanup FROM guild_limits WHERE guild_id = ?`).get(interaction.guildId);
+        const lastCleanup = cooldown?.reward_cleanup ?? 0;
+        if (lastCleanup && lastCleanup + Expify.cooldownRewardCleanup > startTime) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'cooldowndetected')} <t:${Math.floor((lastCleanup + Expify.cooldownRewardCleanup) / 1000)}:F>`); }
+
+        let errorcnt = 0;
+        let allRewards;
+        let parsedRewards;
+        let rewardRoleIds;
+        let members;
+
+        try {
+            // Preload guild rewards
+            allRewards = db.prepare("SELECT * FROM role_rewards WHERE guild_id = ?").all(guild.id);
+        } catch (err) {
+            console.error(`[CLEANUP] Error while reading role_rewards ${guild.id}:`, err);
+            errorcnt = ++errorcnt;
+        }
+            
+        // Check if no rewards
+        if (allRewards.length === 0) { return await Lunar.editReply(interaction, `❌ ${getL(lang ?? dLang, 'rewardsempty')}`); }
+
+        try {
+            // Parse rewards and their requirements
+            parsedRewards = allRewards.map(r => {
+                const [text, voice, video] = r.xp_required.split(',').map(Number);
+                return { role_id: r.role_id, req: { text, voice, video } };
+            });
+            rewardRoleIds = new Set(parsedRewards.map(r => r.role_id));
+        } catch (err) {
+            console.error(`[CLEANUP] Error while mapping rewards ${guild.id}:`, err);
+            errorcnt = ++errorcnt;
+        }
+
+        // Fetch ALL Guild members
+        members = await Expify.fetchMembersWithRetry(guild);
+
+        // Check if members missing
+        if (!members) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'operationerr')}`); }
+
+        let removedCount = 0;
+
+        // Prepare request for gathering user XP
+        const getUserStmt = db.prepare("SELECT text_xp, voice_xp, video_xp FROM users WHERE guild_id = ? AND user_id = ?");
+
+        // Check every member
+        for (const [memberId, member] of members) {
+                // Skip bots
+                if (member.user.bot) continue;
+            try {
+                // Get user XP
+                const userData = getUserStmt.get(guild.id, memberId) || { text_xp: 0, voice_xp: 0, video_xp: 0 };
+
+                // Decide which role requirements user matches
+                const earnedRoleIds = new Set();
+                for (const reward of parsedRewards) {
+                    if (userData.text_xp >= reward.req.text && 
+                        userData.voice_xp >= reward.req.voice && 
+                        userData.video_xp >= reward.req.video) {
+                        earnedRoleIds.add(reward.role_id);
+                    }
+                }
+
+                // Find roles that need to be removed
+                // If member has a role that set as reward and user does not have required xp to have this role
+                const rolesToRemove = [];
+                for (const roleId of member.roles.cache.keys()) {
+                    if (rewardRoleIds.has(roleId) && !earnedRoleIds.has(roleId)) {
+                        rolesToRemove.push(roleId);
+                    }
+                }
+
+                // Remove roles if find at least one
+                if (rolesToRemove.length > 0) {
+                    // Use rewards module to remove roles with array
+                    await manageRoles(member, [], rolesToRemove, 5, client, probe.admin_cid, probe.lang);
+                    ++removedCount;
+                }
+            } catch (err) {
+                console.error(`[CLEANUP] Error while updating user ${memberId}:`, err);
+            }
+        };
+
+        // Set last cleanup date
+        if (!errorcnt) {
+            try {
+                db.prepare(`
+                    INSERT INTO guild_limits (guild_id, reward_cleanup)
+                    VALUES (?, ?)
+                    ON CONFLICT(guild_id) DO UPDATE SET 
+                        reward_cleanup = excluded.reward_cleanup
+                `).run(`${guild.id}`, startTime);
+            } catch (err) {
+                console.error(`[LIMITS] Error in guild_limits updating reward_cleanup ${guild.id}:`, err)
+            }
+        }
+
+        //Building response
+        const l = (key) => getL(lang ?? dLang, key);
+        let replycontent = `✅ ${l('cleanupcomplete')} **${removedCount}**! ${(errorcnt) ? `\n\n${l('operationerr')}: ${errorcnt}` : ' '}`;
+
+        console.log(`[CLEANUP] Updated ${removedCount} users in ${guild.id}(${timeDiff(startTime)}ms)`);
+
+        // Send notification
+        if (probe.admin_cid && probe.admin_cid !== '0' ) {
+            const ld = (key) => getL(probe.lang ?? dLang, key);
+            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>\n✅ ${ld('cleanupcomplete')} **${removedCount}**! ${(errorcnt) ? `\n\n${ld('operationerr')}: ${errorcnt}` : ' '}`);
+        }
+
+        await Lunar.editReply(interaction, replycontent);
+    };
 
     static rank = async function(interaction, lang, isephemeral) {
         const rankTime = Date.now()
@@ -1041,7 +1165,7 @@ class Expify {
         await Lunar.editReply(interaction, status);
     };
 
-    static xpAdd = async function(interaction, lang) {
+    static xpAddRemove = async function(interaction, lang) {
         const startTime = Date.now();
         
         // Check if guild not exist
@@ -1067,13 +1191,26 @@ class Expify {
         // Get xp
         const xp = interaction.options.getInteger('xp');
 
-        // Update xp
-        if (type === 'text_xp') { 
-            userData.text_xp = (userData.text_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.text_xp + xp);
-        } else if (type === 'voice_xp') {
-            userData.voice_xp = (userData.voice_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.voice_xp + xp);
-        } else if (type === 'video_xp') {
-            userData.video_xp = (userData.video_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.video_xp + xp);
+        // Get Action
+        const sub = interaction.options.getSubcommand();
+
+        // Add xp
+        if (sub === 'add') {
+            if (type === 'text_xp') { 
+                userData.text_xp = (userData.text_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.text_xp + xp);
+            } else if (type === 'voice_xp') {
+                userData.voice_xp = (userData.voice_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.voice_xp + xp);
+            } else if (type === 'video_xp') {
+                userData.video_xp = (userData.video_xp + xp) >= Expify.maxUserXp ? Expify.maxUserXp : (userData.video_xp + xp);
+            }
+        } else if (sub === 'remove') {
+            if (type === 'text_xp') { 
+                userData.text_xp = (userData.text_xp - xp) <= 0 ? 0 : (userData.text_xp - xp);
+            } else if (type === 'voice_xp') {
+                userData.voice_xp = (userData.voice_xp - xp) <= 0 ? 0 : (userData.voice_xp - xp);
+            } else if (type === 'video_xp') {
+                userData.video_xp = (userData.video_xp - xp) <= 0 ? 0 : (userData.video_xp - xp);
+            }
         }
 
         //Write and Building response
@@ -1326,6 +1463,39 @@ class Expify {
         console.log(`Sent TOP ${type} of ${interaction.guildId}(${timeDiff(startTime)}ms)`)
         await Lunar.editReply(interaction, null, [getEmbed]);
     };
+
+    static lang = async function(client, interaction, lang) {
+        const startTime = Date.now();
+
+        // Check if guild not exist
+        const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
+
+        const newlang = interaction.options.getString('lang') ?? interaction.locale;
+
+        // Refuse if not supported
+        if (!supportedlocales.includes(newlang)) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'langnotsupported')}`, null, true) };
+
+        // Save changes to Database
+        db.prepare(`
+            INSERT INTO guild_params (guild_id, lang) 
+            VALUES (?, ?)
+            ON CONFLICT(guild_id) DO UPDATE SET lang = excluded.lang
+        `).run(interaction.guildId, newlang);
+        
+        //Building response
+        const l = (key) => getL(newlang ?? dLang, key);
+        let replycontent = `✅ ${l('langsuccess')}`;
+
+        console.log(`[LANG] Set '${newlang}' in ${interaction.guildId}(${timeDiff(startTime)}ms)`);
+
+        // Send notification
+        if (params.admin_cid && params.admin_cid !== '0' ) {
+            await Lunar.sendEvent(client, params.admin_cid, `⚠️ <@${interaction.user.id}>\n${replycontent}`);
+        }
+
+        await Lunar.editReply(interaction, replycontent);
+    };
 }
 
-module.exports = { Expify };
+module.exports = { Expify, dLang };

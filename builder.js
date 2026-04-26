@@ -112,6 +112,15 @@ class ExpifyBuiler {
                 3
             )
         )
+        .addSubcommand(subcommand =>
+            addConfirmationOption(
+                subcommand
+                    .setName('cleanup-rewards')
+                    .setDescription('🧹 Remove undeserved rewards from all users (Useful after big rewards updates or xp-reset)')
+                    .setDescriptionLocalizations(getLoc('expifycleanupdesc', '🧹 ')),
+                2
+            )
+        )
 
     static rewardcmd = new SlashCommandBuilder()
         .setName('reward')
@@ -199,8 +208,8 @@ class ExpifyBuiler {
         .setDescription('🔗 XP related operations')
         .setDescriptionLocalizations(getLoc('xprelated', '🔗 '))
         .addSubcommand(subcommand =>
-            subcommand.setName('set')
-            .setDescription('🎯 Set user XP')
+            subcommand.setName('set-level')
+            .setDescription('🎯 Set user Level')
             .setDescriptionLocalizations(getLoc('xpset', '🎯 '))
             .addUserOption(option =>
                 option.setName('user')
@@ -224,6 +233,28 @@ class ExpifyBuiler {
             subcommand.setName('add')
             .setDescription('✨ Add XP to user')
             .setDescriptionLocalizations(getLoc('xpadd', '✨ '))
+            .addUserOption(option =>
+                option.setName('user')
+                .setNameLocalizations(getLoc('arg.user'))
+                .setDescription('Select user')
+                .setDescriptionLocalizations(getLoc('selectuser'))
+                .setRequired(true)
+            )
+            .addStringOption(addXpTypeOption('Select XP type to change', 'expifygaintype', true))
+            .addIntegerOption(option =>
+                option.setName('xp')
+                .setNameLocalizations(getLoc('arg.xp'))
+                .setDescription('Type integer')
+                .setDescriptionLocalizations(getLoc('quantityinteger'))
+                .setMinValue(0)
+                .setMaxValue(160280000)
+                .setRequired(true)
+            )
+        )
+        .addSubcommand(subcommand =>
+            subcommand.setName('remove')
+            .setDescription('✘ Remove XP from user')
+            .setDescriptionLocalizations(getLoc('xpremove', '✘ '))
             .addUserOption(option =>
                 option.setName('user')
                 .setNameLocalizations(getLoc('arg.user'))
@@ -376,6 +407,25 @@ class ExpifyBuiler {
             .setDescriptionLocalizations(getLoc('noxplist', '📝 '))
         )
 
+    static langcmd = new SlashCommandBuilder()
+        .setName('lang')
+        .setDescription('🌎 Change language of automatic messages (leave blank to use language of your UI)')
+        .setDescriptionLocalizations(getLoc('langcmd', '🌎 '))  
+        .addStringOption(option =>
+            option.setName('lang')
+            .setNameLocalizations(getLoc('arg.lang'))
+            .setDescription('Select Language')
+            .setDescriptionLocalizations(getLoc('selectlanguage'))
+            .setRequired(false)
+            .addChoices(
+                addSimpleChoice('🇷🇺 Русский', 'ru'),
+                addSimpleChoice('🇺🇸 English', 'en-US'),
+                addSimpleChoice('🇺🇦 Українська', 'uk'),
+                addSimpleChoice('🇩🇪 Deutsch', 'de'),
+                addSimpleChoice('🇫🇷 Français', 'fr'),
+            )
+        )
+
     // Set default interactions access rules
     static {
         setAvailable(this.ping);
@@ -383,6 +433,7 @@ class ExpifyBuiler {
         setAvailable(this.invite);
         setAvailable(this.rankcmd);
         setModeratorLite(this.topcmd);
+        setModeratorOnly(this.langcmd);
         setModeratorOnly(this.rewardcmd);
         setModeratorOnly(this.xpcmd);
         setModeratorOnly(this.noxpcmd);
@@ -398,6 +449,7 @@ class ExpifyBuiler {
         setDefaultContext(this.xpcmd);
         setDefaultContext(this.topcmd);
         setDefaultContext(this.noxpcmd);
+        setDefaultContext(this.langcmd);
     }
 }; 
 

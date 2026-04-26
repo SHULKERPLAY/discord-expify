@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const { MessageFlags, EmbedBuilder } = require('discord.js');
 
-//Supported Locales
-const supportedlocales = ['ru'];
+/** Supported Locales */
+const supportedlocales = ['ru', 'en-US', 'uk', 'de', 'fr'];
+
+/** Default Language code */
+const dLang = 'en-US'
 
 //Functions
 //loading bot localization
@@ -136,7 +139,7 @@ class Lunar {
         try {
             //djs v14.15+ now using flags instead of 'ephemeral: true'
             const replyflag = [];
-            const replydata = (replycontent || '').length > 1900 ? replycontent.substring(0, 1900) + "...\n```\nОтображаемый контент превышает 1900 символов!" : replycontent;
+            const replydata = (replycontent || '').length > 1900 ? replycontent.substring(0, 1900) + "\n......" : replycontent;
             if (isephemeral) replyflag.push(MessageFlags.Ephemeral);
             if (hideembeds) replyflag.push(MessageFlags.SuppressEmbeds);
             await interaction.reply({
@@ -151,7 +154,7 @@ class Lunar {
 
     // Use while editing reply: editReply(interaction, 'If text not needed type null', [embeds]); // Embeds can be null
     static editReply = async function(interaction, replycontent, embedcontent, suppressembeds) {
-        const replydata = (replycontent || '').length > 1900 ? replycontent.substring(0, 1900) + "...\n```\nОтображаемый контент превышает 1900 символов!" : replycontent;
+        const replydata = (replycontent || '').length > 1900 ? replycontent.substring(0, 1900) + "\n......" : replycontent;
         try {
             await interaction.editReply({
                 content: replydata || '',
@@ -166,7 +169,7 @@ class Lunar {
     /** REQUIRED client AS FIRST ARG! Send message to specific channel. Return true if success */
     static sendEvent = async function(client, channelId, content, embedcontent, hideembeds) {
         if (!channelId) { return false }
-        const contentdata = (content || '').length > 1900 ? content.substring(0, 1900) + "...\n```\nОтображаемый контент превышает 1900 символов!" : content;
+        const contentdata = (content || '').length > 1900 ? content.substring(0, 1900) + "\n......" : content;
         try {
             const channel = await client.channels.fetch(channelId);
             
@@ -224,7 +227,7 @@ class Lunar {
             .setDescription(descriptioncontent)
             // .setAuthor({ name: 'Expify', iconURL: authoricon, url: authorurl })
             // .setTimestamp()
-            .setFooter({ text: footer || 'С любовью, @Expify#7920' });
+            .setFooter({ text: footer || '❤️ @Expify#7920' });
 
             // Author field only if specified
             if (author) { newembed.setAuthor({ name: author, iconURL: authorIcon || undefined })}
@@ -244,4 +247,4 @@ function getRandomInt(min, max) {
 };
 
 //export
-module.exports = { getRandomInt, getLoc, getL, shardStat, timeDiff, renderProgressBar, calculatePercentage, Lunar, XpLeveling };
+module.exports = { getRandomInt, getLoc, getL, supportedlocales, dLang, shardStat, timeDiff, renderProgressBar, calculatePercentage, Lunar, XpLeveling };

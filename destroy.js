@@ -10,7 +10,7 @@ async function destroy() {
     //actions as client ready
     client.once(Events.ClientReady, async(readyClient) => {
         try {
-            // Очищаем везде
+            // Clear all interactions
             await client.rest.put(Routes.applicationCommands(client.user.id), { body: [] });
             console.log(`Interactions deleted for ${readyClient.user.tag} (${timeDiff(destroyTime)}ms)!`);
         } catch (error) {

@@ -49,7 +49,7 @@ async function processXP(client, db) {
     const addXp = (gId, uId, type, amount) => {
         const key = `${gId}|${uId}`;
         if (!xpUpdates.has(key)) xpUpdates.set(key, { text: 0, voice: 0, video: 0 });
-        xpUpdates.get(key)[type] += Math.round(amount); // Округляем до целых
+        xpUpdates.get(key)[type] += Math.round(amount); // Without decimals
     };
 
     // 3. Process all guilds
@@ -98,6 +98,12 @@ async function processXP(client, db) {
             for (const [channelId, states] of channelsWithMembers.entries()) {
                 if (noxp_cid.includes(channelId)) continue;
                 if (states.length <= 1) continue; // More than 1 member required (not bots)
+
+                // Count how many users in the channel not muted
+                const unmutedCount = states.filter(s => !s.mute && !s.selfMute && !s.serverMute).length;
+
+                // If everyone in the channel is muted
+                if (unmutedCount <= 1) continue;
 
                 for (const state of states) {
                     const userId = state.id;

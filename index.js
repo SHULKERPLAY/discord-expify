@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = '26.04.0e';
+const corever = '26.04.1a';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -59,6 +59,8 @@ client.on('interactionCreate', async (interaction) => {
             await Expify.expifyMigrateHelp(interaction, lang);
         } else if (sub === 'xp-reset') {
             await Expify.expifyXpReset(client, interaction, lang);
+        } else if (sub === 'cleanup-rewards') {
+            await Expify.expifyCleanupRewards(client, interaction, lang);
         }
     } else if (interaction.commandName === 'rank') {
         await Expify.rank(interaction, lang, isephemeral);
@@ -77,10 +79,12 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.commandName === 'xp') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         const sub = interaction.options.getSubcommand()
-        if (sub === 'set') {
+        if (sub === 'set-level') {
             await Expify.xpSet(interaction, lang);
         } else if (sub === 'add') {
-            await Expify.xpAdd(interaction, lang);
+            await Expify.xpAddRemove(interaction, lang);
+        } else if (sub === 'remove') {
+            await Expify.xpAddRemove(interaction, lang);
         } else if (sub === 'calc') {
             await Expify.xpCalc(interaction, lang);
         } else if (sub === 'reset') {
@@ -92,6 +96,9 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.commandName === 'top') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         await Expify.top(interaction, lang);
+    } else if (interaction.commandName === 'lang') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        await Expify.lang(client, interaction, lang);
     }
 });
 
@@ -135,13 +142,14 @@ client.once(Events.ClientReady, async(readyClient) => {
                 SELECT COUNT(*) as total 
                 FROM users 
                 WHERE last_updated > ?
-            `).get(Date.now() - presenceInterval).total;
+            `).get(Date.now() - presenceInterval * 2).total;
         }
 
         //Bot Presence List
         const presencelist = [
-            { name: `🔮 Версия ядра • ${corever}`, type: ActivityType.Streaming },
-            { name: `💥 Активно аккаунтов • ${activeCount}`, type: ActivityType.Streaming }
+            { name: `🔮 Core Version • ${corever}`, type: ActivityType.Streaming },
+            { name: `💥 Users Active • ${activeCount}`, type: ActivityType.Streaming },
+            { name: `🏆 Use /rank to check level!`, type: ActivityType.Streaming }
         ];
 
         //Set Presence
