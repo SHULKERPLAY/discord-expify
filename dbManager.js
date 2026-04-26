@@ -86,7 +86,8 @@ function checkDB() {
         'announce_cid': "TEXT DEFAULT '0'",
         'admin_cid': "TEXT DEFAULT '0'",
         'rank_cid': "TEXT DEFAULT '0'",
-        'reward_mode': 'INTEGER DEFAULT 0'
+        'reward_mode': 'INTEGER DEFAULT 0',
+        'lang': "TEXT DEFAULT 'en-US'"
     });
 
     // Check role_rewards table
@@ -98,7 +99,8 @@ function checkDB() {
 
     // Check guild_limits table
     checkColumns('guild_limits', {
-        'migrate_1': 'INTEGER'
+        'migrate_1': 'INTEGER',
+        'reward_cleanup': 'INTEGER'
     });
 };
 
@@ -139,7 +141,8 @@ function initializeDB() {
             announce_cid TEXT DEFAULT '0',
             admin_cid TEXT DEFAULT '0',
             rank_cid TEXT DEFAULT '0',
-            reward_mode INTEGER DEFAULT 0
+            reward_mode INTEGER DEFAULT 0,
+            lang TEXT DEFAULT 'en-US'
         )
     `).run();
 
@@ -162,7 +165,8 @@ function initializeDB() {
     db.prepare(`
         CREATE TABLE IF NOT EXISTS guild_limits (
             guild_id TEXT PRIMARY KEY,
-            migrate_1 INTEGER
+            migrate_1 INTEGER,
+            reward_cleanup INTEGER
         )
     `).run();
 

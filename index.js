@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = '26.04.0b';
+const corever = '26.04.1a';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -54,11 +54,13 @@ client.on('interactionCreate', async (interaction) => {
         } else if (sub === 'reset') {
             await Expify.expifyReset(interaction, lang);
         } else if (sub === 'migrate') {
-            await Expify.expifyMigrate(interaction, lang);
+            await Expify.expifyMigrate(client, interaction, lang);
         } else if (sub === 'migrate-help') {
             await Expify.expifyMigrateHelp(interaction, lang);
         } else if (sub === 'xp-reset') {
             await Expify.expifyXpReset(client, interaction, lang);
+        } else if (sub === 'cleanup-rewards') {
+            await Expify.expifyCleanupRewards(client, interaction, lang);
         }
     } else if (interaction.commandName === 'rank') {
         await Expify.rank(interaction, lang, isephemeral);
@@ -77,10 +79,12 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.commandName === 'xp') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         const sub = interaction.options.getSubcommand()
-        if (sub === 'set') {
+        if (sub === 'set-level') {
             await Expify.xpSet(interaction, lang);
         } else if (sub === 'add') {
-            await Expify.xpAdd(interaction, lang);
+            await Expify.xpAddRemove(interaction, lang);
+        } else if (sub === 'remove') {
+            await Expify.xpAddRemove(interaction, lang);
         } else if (sub === 'calc') {
             await Expify.xpCalc(interaction, lang);
         } else if (sub === 'reset') {
@@ -92,6 +96,9 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.commandName === 'top') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         await Expify.top(interaction, lang);
+    } else if (interaction.commandName === 'lang') {
+        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
+        await Expify.lang(client, interaction, lang);
     }
 });
 
@@ -100,6 +107,11 @@ client.on('messageCreate', async (message) => {
     // Ignore bots and private DMs
     if (message.author.bot || !message.guild) return;
     messageActivity(message.guild.id, message.author.id, message.channel.id);
+});
+
+client.on('guildCreate', (guild) => {
+    // Init guild in database
+    Expify.guildCreate(guild.id)
 });
 
 //actions as client ready
@@ -113,17 +125,31 @@ client.once(Events.ClientReady, async(readyClient) => {
     //index init
     let currentIndex = 0;
 
+    // Time to update presence status
+    const presenceInterval = 30 * 60 * 1000;
+
     function presenceupdate() {
         //check if client ready
         if (!client.user) return;
 
         // Update presence only by first shard!
         if (client.shard && client.shard.ids[0] !== 0) return;
+        
+        // Count active users for presence status
+        let activeCount;
+        if (currentIndex === 1) {
+            activeCount = db.prepare(`
+                SELECT COUNT(*) as total 
+                FROM users 
+                WHERE last_updated > ?
+            `).get(Date.now() - presenceInterval * 2).total;
+        }
 
         //Bot Presence List
         const presencelist = [
-            { name: `🔮 Версия ядра • ${corever}`, type: ActivityType.Streaming },
-            { name: `🔮 Индекс • ${currentIndex}`, type: ActivityType.Streaming }
+            { name: `🔮 Core Version • ${corever}`, type: ActivityType.Streaming },
+            { name: `💥 Users Active • ${activeCount}`, type: ActivityType.Streaming },
+            { name: `🏆 Use /rank to check level!`, type: ActivityType.Streaming }
         ];
 
         //Set Presence
@@ -139,7 +165,7 @@ client.once(Events.ClientReady, async(readyClient) => {
     //Update presence on Login
     presenceupdate();
     //Update presence every (x, ms)
-    setInterval(presenceupdate, 1800000);
+    setInterval(presenceupdate, presenceInterval);
 
     // XP processing cycle cooldown
     const xpInterval = 60000;

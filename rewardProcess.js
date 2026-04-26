@@ -1,4 +1,4 @@
-const { timeDiff } = require('./functions.js');
+const { timeDiff, getL, dLang } = require('./functions.js');
 const { Lunar } = require('./functions.js');
 const logprefix = '[Reward Process]'
 
@@ -10,7 +10,7 @@ function parseXP(xpString) {
 
 /**
  * Checking reward type: 
- * returns 'text', 'voice' или 'video', if only one type was added.
+ * returns 'text', 'voice' or 'video', if only one type was added.
  * returns 'combined', if was added multiple types.
  */
 function getRewardType(xp) {
@@ -22,8 +22,8 @@ function getRewardType(xp) {
     return types.length === 1 ? types[0] : 'combined';
 }
 
-/** Safe role managing with Rate Limit protect */
-async function manageRoles(member, addIds, removeIds, retries = 5, client, admin_cid) {
+/** Safe role management with Rate Limit protect */
+async function manageRoles(member, addIds, removeIds, retries = 5, client, admin_cid, lang) {
     if (addIds.length === 0 && removeIds.length === 0) return;
 
     try {
@@ -32,13 +32,13 @@ async function manageRoles(member, addIds, removeIds, retries = 5, client, admin
         if (addIds.length > 0) await member.roles.add(addIds);
     } catch (error) {
         if ((error.status === 429 || error.message.includes('rate limited')) && retries > 0) {
-            const wait = (error.retry_after || error.data.retry_after || 2) * 1000;
+            const wait = (error.retry_after || error.data.retry_after || 1) * 1000;
             await new Promise(r => setTimeout(r, wait));
             return manageRoles(member, addIds, removeIds, retries - 1, client, admin_cid);
         }
         console.error(`${logprefix} Failed to update roles of ${member.id}:`, error.message);
         if (admin_cid && admin_cid !== '0' ) {
-            await Lunar.sendEvent(client, admin_cid, `⚠️ НЕ УДАЛОСЬ ОБНОВИТЬ НАГРАДЫ ДЛЯ <@${member.id}>!`);
+            await Lunar.sendEvent(client, admin_cid, `⚠️ ${getL(lang ?? dLang, 'rewardupdateerr')} <@${member.id}>!`);
         }
     }
 }
@@ -62,7 +62,7 @@ async function processRewards(client, db) {
         if (!guild) continue;
 
         // 2. Load params and rewards of the guild
-        const params = db.prepare("SELECT admin_cid, announce_cid, reward_mode FROM guild_params WHERE guild_id = ?").get(guild_id);
+        const params = db.prepare("SELECT admin_cid, announce_cid, reward_mode, lang FROM guild_params WHERE guild_id = ?").get(guild_id);
         if (!params) continue;
 
         const allRewards = db.prepare("SELECT * FROM role_rewards WHERE guild_id = ?").all(guild_id);
@@ -143,7 +143,7 @@ async function processRewards(client, db) {
 
                 if (rolesToAdd.length > 0 || rolesToRemove.length > 0) {
                     // Processing changes
-                    await manageRoles(member, rolesToAdd, rolesToRemove, 5, client, params.admin_cid);
+                    await manageRoles(member, rolesToAdd, rolesToRemove, 5, client, params.admin_cid, params.lang);
 
                     // Add to log only roles that was actually added
                     if (rolesToAdd.length > 0) {
@@ -163,7 +163,7 @@ async function processRewards(client, db) {
                 const guildName = guild?.name ?? undefined;
                 const guildIcon = guild?.iconURL() ?? undefined;
                 const description = rewardLogs.map(log => `⭐ <@${log.userId}>\n🏆 ${log.roles.join(', ')}`).join('\n\n');             
-                const rewardembed = Lunar.createEmbed('✨ Получены новые награды!', description, null, Lunar.getRandomAestheticColor(), guildName, guildIcon);
+                const rewardembed = Lunar.createEmbed(`✨ ${getL(params.lang ?? dLang, 'earnednewreward')}`, description, null, Lunar.getRandomAestheticColor(), guildName, guildIcon);
                 await Lunar.sendEvent(client, params.announce_cid, null, [rewardembed]);
             } catch (e) {
                 console.error(`${logprefix} Error while announce ${guild_id} in ${params.announce_cid}:`, e.message);
@@ -174,4 +174,4 @@ async function processRewards(client, db) {
     console.log(`${logprefix} Rewarded in ${timeDiff(startTime)}ms`);
 }
 
-module.exports = { processRewards };
+module.exports = { processRewards, manageRoles };
