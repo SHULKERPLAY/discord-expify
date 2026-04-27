@@ -1,5 +1,5 @@
 const { db } = require('../dbManager.js')
-const { getL, Lunar, dLang } = require('../functions.js');
+const { getL, Lunar, dLang, EInteractions } = require('../functions.js');
 const { timeDiff } = require('../utils.js');
 
 async function Itop(interaction, lang) {
@@ -10,7 +10,7 @@ async function Itop(interaction, lang) {
     let topUsers;
 
     // Check if guild not exist
-    const params = db.prepare("SELECT text_xp, voice_xp, video_xp FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`text_xp, voice_xp, video_xp`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
     // Reply if this XP type is disabled

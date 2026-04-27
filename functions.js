@@ -324,6 +324,64 @@ class EInteractions {
     /** Reward Cleanup cooldown */
     static cooldownRewardCleanup = 3600000 * 24 * 7;
 
+    /** Load any value from Guild Params by GuildId
+     * @param {string} types - What to load (`*` or `admin_cid, lang, ...`)
+     * @param {interaction.guildId} guildId - GuildID */
+    static loadGuildParam(types, guildId) {
+        let data;
+        try {
+            data = db.prepare(`SELECT ${types} FROM guild_params WHERE guild_id = ?`).get(`${guildId}`);
+        } catch (err) {
+            console.error(`[DB] Error while loading guild_params '${types}' of ${guildId}:`, err)
+        }
+        return data;
+    }
+
+    /** Load any value from Guild Params by GuildId
+     * @param {string} types - What to load (`*` or `admin_cid, lang, ...`)
+     * @param {interaction.guildId} guildId - GuildID */
+    static loadGuildLimit(types, guildId) {
+        let data;
+        try {
+            data = db.prepare(`SELECT ${types} FROM guild_limits WHERE guild_id = ?`).get(`${guildId}`);
+        } catch (err) {
+            console.error(`[DB] Error while loading guild_limits '${types}' of ${guildId}:`, err)
+        }
+        return data;
+    }
+
+    /** Load any value from Guild Params by GuildId
+     * @param {string} type - What to set (`migrate_1`)
+     * @param {interaction.guildId} guildId - GuildID 
+     * @param {number} time - Date.now() integer */
+    static setGuildLimit(type, guildId, time = Date.now()) {
+        try {
+            db.prepare(`
+                INSERT INTO guild_limits (guild_id, ${type})
+                VALUES (?, ?)
+                ON CONFLICT(guild_id) DO UPDATE SET 
+                    ${type} = excluded.${type}
+            `).run(`${guildId}`, time);
+        } catch (err) {
+            console.error(`[LIMITS] Error in guild_limits updating ${type} of ${guildId}:`, err)
+        }
+        return;
+    }
+
+    /** Check basic interaction options for confirmations. Return true if at least one option is `No` 
+     * @param {interaction} interaction - `interaction` object */
+    static checkConfirmation(interaction) {
+        const confirmation_1 = interaction.options.getString('confirmation_1') ?? 'Yes';
+        const confirmation_2 = interaction.options.getString('confirmation_2') ?? 'Yes';
+        const confirmation_3 = interaction.options.getString('confirmation_3') ?? 'Yes';
+
+        if (confirmation_1 !== 'Yes' || confirmation_2 !== 'Yes' || confirmation_3 !== 'Yes') {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /** Update guild_params object in database
      * @param {string} type - Column Name (example: 'text_xp')
      * @param {number|string} value - New Value
@@ -382,7 +440,7 @@ class EInteractions {
      * @param {boolean} reset - Reset type if true */
     static toggleIgnoreChannel(guildId, type, UID, limit = 10, reset = false) {
         // Get current database value
-        const row = db.prepare(`SELECT ${type} FROM guild_params WHERE guild_id = ?`).get(guildId);
+        const row = this.loadGuildParam(type, guildId);
         if (!row) { return { success: false, reason: 'guild_missing' } };
 
         let updatedValue;
@@ -432,7 +490,7 @@ class EInteractions {
         let data;
 
         // Check if guild not exist
-        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const params = this.loadGuildParam(`reward_mode`, interaction.guildId);
         if (!params) { return { data: `${getL( lang ?? dLang, 'guildnotfound')}`, count: 0 }}
 
         try {
@@ -473,18 +531,7 @@ class EInteractions {
         let typeName;
 
         typeName = `${getL(lang ?? dLang, 'noxpentities')}`;
-        let getSettings;
-        let guildParams;
-        try {
-            // Get server settings
-            getSettings = db.prepare(`
-                SELECT noxp_cid, noxp_uid, noxp_rid
-                FROM guild_params WHERE guild_id = ?
-            `);
-            guildParams = getSettings.get(`${interaction.guildId}`)
-        } catch (err) {
-            console.error(`[noXP Data] Error while loading guild configuration:`, err)
-        }
+        const guildParams = EInteractions.loadGuildParam(`noxp_cid, noxp_uid, noxp_rid`, interaction.guildId);
 
         if (!guildParams) {
             console.log(`[noXP Data] Guild ${interaction.guildId} not found in DB`);

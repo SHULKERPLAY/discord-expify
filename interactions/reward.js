@@ -12,7 +12,7 @@ async function IrewardAdd(interaction, lang) {
     let newId;
 
     // Check if guild not exist
-    const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`reward_mode`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     // Check if record already exists 
@@ -71,7 +71,7 @@ async function IrewardRemove(interaction, lang, client) {
     const rewardId = interaction.options.getInteger('id') ?? 0;
 
     // Check if guild not exist
-    const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     try {
@@ -125,10 +125,10 @@ async function IrewardMode(interaction, lang, client) {
     let status;
 
     // Check confirmation
-    if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
+    if (EInteractions.checkConfirmation(interaction)) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
 
     // Check if guild not exist
-    const params = db.prepare("SELECT reward_mode, admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`reward_mode, admin_cid, lang`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     // Get type to set

@@ -1,4 +1,4 @@
-const { Lunar, getL, dLang } = require('./functions.js');
+const { Lunar, getL, dLang, EInteractions } = require('./functions.js');
 const { timeDiff } = require('./utils.js');
 const logprefix = '[Reward Process]'
 
@@ -62,7 +62,7 @@ async function processRewards(client, db) {
         if (!guild) continue;
 
         // 2. Load params and rewards of the guild
-        const params = db.prepare("SELECT admin_cid, announce_cid, reward_mode, lang FROM guild_params WHERE guild_id = ?").get(guild_id);
+        const params = EInteractions.loadGuildParam(`admin_cid, announce_cid, reward_mode, lang`, guild_id);
         if (!params) continue;
 
         const allRewards = db.prepare("SELECT * FROM role_rewards WHERE guild_id = ?").all(guild_id);

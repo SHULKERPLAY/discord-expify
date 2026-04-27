@@ -7,7 +7,7 @@ async function IxpSet(interaction, lang, client) {
     let userData;
 
     // Check if guild not exist
-    const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
     const userid = interaction.options.getUser('user')?.id;
@@ -51,7 +51,7 @@ async function IxpAddRemove(interaction, lang, client) {
     const startTime = Date.now();
     
     // Check if guild not exist
-    const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
     const userid = interaction.options.getUser('user')?.id;
@@ -138,7 +138,7 @@ async function IxpReset(interaction, lang, client) {
     const startTime = Date.now();
 
     // Check if guild not exist
-    const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
     const userid = interaction.options.getUser('user')?.id;

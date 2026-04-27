@@ -1,22 +1,16 @@
 const { db } = require('../dbManager.js')
 const { MessageFlags } = require('discord.js');
-const { getL, renderProgressBar, calculatePercentage, Lunar, XpLeveling, dLang } = require('../functions.js');
+const { getL, renderProgressBar, calculatePercentage, Lunar, XpLeveling, EInteractions, dLang } = require('../functions.js');
 const { timeDiff } = require('../utils.js');
 
 async function Irank(interaction, lang, isephemeral) {
     const rankTime = Date.now()
     let ephemeral;
-    let getSettings;
-    let guildParams;
     let getUser;
     let userData;
-    try {
-        // Check is guild settings restricted rank
-        getSettings = db.prepare("SELECT text_xp, voice_xp, video_xp, rank_cid FROM guild_params WHERE guild_id = ?");
-        guildParams = getSettings.get(`${interaction.guildId}`)
-    } catch (err) {
-        console.error(`[RANK] Error while loading guild configuration:`, err)
-    }
+
+    // Check is guild settings restricted rank
+    const guildParams = EInteractions.loadGuildParam(`text_xp, voice_xp, video_xp, rank_cid`, interaction.guildId);
 
     // If server not found in DB
     if (!guildParams) {

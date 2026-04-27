@@ -1,12 +1,12 @@
 const { db } = require('../dbManager.js')
-const { getL, Lunar, supportedlocales, dLang } = require('../functions.js');
+const { getL, Lunar, supportedlocales, dLang, EInteractions } = require('../functions.js');
 const { timeDiff } = require('../utils.js');
 
 async function Ilang(client, interaction, lang) {
     const startTime = Date.now();
 
     // Check if guild not exist
-    const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const params = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
     const newlang = interaction.options.getString('lang') ?? interaction.locale;

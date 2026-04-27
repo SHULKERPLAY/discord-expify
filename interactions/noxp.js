@@ -6,7 +6,7 @@ async function InoxpIDs(interaction, lang, client) {
     const startTime = Date.now();
 
     // Check if guild not exist
-    const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const probe = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     let object;
@@ -33,7 +33,7 @@ async function InoxpIDs(interaction, lang, client) {
         skipCheck = true;
 
         // Check confirmation
-        if (interaction.options.getString('confirmation_1') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
+        if (EInteractions.checkConfirmation(interaction)) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
         const resetedType = interaction.options.getString('type') ?? 'all';
         if (resetedType === 'all') {
             type = 'all'

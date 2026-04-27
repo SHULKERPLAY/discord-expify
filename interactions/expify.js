@@ -13,19 +13,8 @@ async function IexpifyGet(interaction, lang) {
     if (type === 'gain') {
         typeName = `${getL(lang ?? dLang, 'xpgaining')}`;
 
-        let getSettings;
-        let guildParams;
-        try {
-            // Get server settings
-            getSettings = db.prepare(`
-                SELECT text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate
-                FROM guild_params WHERE guild_id = ?
-            `);
-            guildParams = getSettings.get(`${interaction.guildId}`)
-        } catch (err) {
-            console.error(`[GET] Error while loading guild configuration:`, err)
-        }
-
+        // Get server settings
+        const guildParams = EInteractions.loadGuildParam(`text_xp, text_xp_rate, voice_xp, voice_xp_rate, video_xp, video_xp_rate`, interaction.guildId);
         if (!guildParams) {
             console.log(`[GET] Guild ${interaction.guildId} not found in DB`);
             return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildnotfound')}`)
@@ -47,19 +36,9 @@ async function IexpifyGet(interaction, lang) {
         .join('\n');
     } else if (type === 'cid') {
         typeName = `${getL(lang ?? dLang, 'channels')}`;
-        let getSettings;
-        let guildParams;
-        try {
-            // Get server settings
-            getSettings = db.prepare(`
-                SELECT announce_cid, admin_cid, rank_cid
-                FROM guild_params WHERE guild_id = ?
-            `);
-            guildParams = getSettings.get(`${interaction.guildId}`)
-        } catch (err) {
-            console.error(`[GET] Error while loading guild configuration:`, err)
-        }
 
+        // Load Guild data
+        const guildParams = EInteractions.loadGuildParam(`announce_cid, admin_cid, rank_cid`, interaction.guildId);
         if (!guildParams) {
             console.log(`[GET] Guild ${interaction.guildId} not found in DB`);
             return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildnotfound')}`)
@@ -106,7 +85,7 @@ async function IexpifyToggle(interaction, lang, client) {
     }
 
     // Get new state for reply
-    const newState = db.prepare(`SELECT ${type}, admin_cid, lang FROM guild_params WHERE guild_id = ?`).get(interaction.guildId);
+    const newState = EInteractions.loadGuildParam(`${type}, admin_cid, lang`, interaction.guildId);
 
     // Check if undefined
     if (!newState) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
@@ -134,7 +113,7 @@ async function IexpifyGain(interaction, lang, client) {
     let status;
 
     // Check if guild not exist
-    const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const probe = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     // To XP rate
@@ -169,7 +148,7 @@ async function IexpifyCIDs(interaction, lang) {
     let status;
 
     // Check if guild not exist
-    const probe = db.prepare("SELECT text_xp_rate FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const probe = EInteractions.loadGuildParam(`text_xp_rate`, interaction.guildId);
     if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     // Reset settings
@@ -210,7 +189,7 @@ async function IexpifyReset(interaction, lang) {
     let status;
 
     // Check confirmation
-    if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
+    if (EInteractions.checkConfirmation(interaction)) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
 
     const resetTime = Date.now();
     console.log(`Defaulting Guild ${interaction.guildId}`)
@@ -263,12 +242,12 @@ async function IexpifyXpReset(client, interaction, lang) {
     let status;
 
     // Check confirmation
-    if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes' || interaction.options.getString('confirmation_3') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
+    if (EInteractions.checkConfirmation(interaction)) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
     
     const resetTime = Date.now();
 
     // Check if guild not exist
-    const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const probe = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
     console.log(`Resetting user progress of ${interaction.guildId} by ${interaction.user.id}`)
@@ -293,16 +272,16 @@ async function IexpifyXpReset(client, interaction, lang) {
 
 async function IexpifyMigrate(client, interaction, lang) {
     // Check confirmation
-    if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
+    if (EInteractions.checkConfirmation(interaction)) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
 
     const startTime = Date.now();
 
     // Check if guild not exist
-    const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const probe = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     // Check if cooldown
-    const migrate = db.prepare(`SELECT migrate_1 FROM guild_limits WHERE guild_id = ?`).get(interaction.guildId);
+    const migrate = EInteractions.loadGuildLimit(`migrate_1`, interaction.guildId);
     const lastMigration = migrate?.migrate_1 ?? 0;
     if (lastMigration && lastMigration + EInteractions.cooldownMigrate > startTime) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'cooldowndetected')} <t:${Math.floor((lastMigration + EInteractions.cooldownMigrate) / 1000)}:F>`); }
 
@@ -415,18 +394,7 @@ async function IexpifyMigrate(client, interaction, lang) {
     syncUsers(usersToUpdate);
 
     // Set last migration date
-    if (!errorcnt) {
-        try {
-            db.prepare(`
-                INSERT INTO guild_limits (guild_id, migrate_1)
-                VALUES (?, ?)
-                ON CONFLICT(guild_id) DO UPDATE SET 
-                    migrate_1 = excluded.migrate_1
-            `).run(`${guildId}`, startTime);
-        } catch (err) {
-            console.error(`[LIMITS] Error in guild_limits updating migrate_1 ${guildId}:`, err)
-        }
-    }
+    if (!errorcnt) { EInteractions.setGuildLimit(`migrate_1`, guildId, startTime) }
 
     //Building response
     const l = (key) => getL(lang ?? dLang, key);
@@ -451,15 +419,15 @@ async function IexpifyCleanupRewards(client, interaction, lang) {
     const startTime = Date.now();
 
     // Check confirmation
-    if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
+    if (EInteractions.checkConfirmation(interaction)) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
     const guild = interaction.guild;
 
     // Check if guild not exist
-    const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+    const probe = EInteractions.loadGuildParam(`admin_cid, lang`, interaction.guildId);
     if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
     // Check if cooldown
-    const cooldown = db.prepare(`SELECT reward_cleanup FROM guild_limits WHERE guild_id = ?`).get(interaction.guildId);
+    const cooldown = EInteractions.loadGuildLimit(`reward_cleanup`, interaction.guildId);
     const lastCleanup = cooldown?.reward_cleanup ?? 0;
     if (lastCleanup && lastCleanup + EInteractions.cooldownRewardCleanup > startTime) { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'cooldowndetected')} <t:${Math.floor((lastCleanup + EInteractions.cooldownRewardCleanup) / 1000)}:F>`); }
 
@@ -542,18 +510,7 @@ async function IexpifyCleanupRewards(client, interaction, lang) {
     };
 
     // Set last cleanup date
-    if (!errorcnt) {
-        try {
-            db.prepare(`
-                INSERT INTO guild_limits (guild_id, reward_cleanup)
-                VALUES (?, ?)
-                ON CONFLICT(guild_id) DO UPDATE SET 
-                    reward_cleanup = excluded.reward_cleanup
-            `).run(`${guild.id}`, startTime);
-        } catch (err) {
-            console.error(`[LIMITS] Error in guild_limits updating reward_cleanup ${guild.id}:`, err)
-        }
-    }
+    if (!errorcnt) { EInteractions.setGuildLimit(`reward_cleanup`, guild.id, startTime) }
 
     //Building response
     const l = (key) => getL(lang ?? dLang, key);

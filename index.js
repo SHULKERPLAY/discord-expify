@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = '26.04.1c';
+const corever = '26.04.1d';
 const startTime = Date.now();
 
 const { getL, Lunar, guildCreate } = require('./functions.js');
