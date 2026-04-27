@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = '26.04.1a';
+const corever = '26.04.1b';
 const startTime = Date.now();
 
 const { getL, Lunar } = require('./functions.js');
@@ -41,16 +41,11 @@ client.on('interactionCreate', async (interaction) => {
         if (sub === 'get') {
             await Expify.expifyGet(interaction, lang);
         } else if (sub === 'toggle') {
-            await Expify.expifyToggle(interaction, lang);
+            await Expify.expifyToggle(interaction, lang, client);
         } else if (sub === 'gain') {
-            await Expify.expifyGain(interaction, lang);
+            await Expify.expifyGain(interaction, lang, client);
         } else if (sub === 'channels') {
-            const type = interaction.options.getString('type');
-            await Expify.expifyCIDs(interaction, lang, type);
-        } else if (sub === 'warnings') {
-            await Expify.expifyCIDs(interaction, lang, 'admin_cid');
-        } else if (sub === 'rank') {
-            await Expify.expifyCIDs(interaction, lang, 'rank_cid');
+            await Expify.expifyCIDs(interaction, lang);
         } else if (sub === 'reset') {
             await Expify.expifyReset(interaction, lang);
         } else if (sub === 'migrate') {
@@ -70,29 +65,29 @@ client.on('interactionCreate', async (interaction) => {
         if (sub === 'add') {
             await Expify.rewardAdd(interaction, lang);
         } else if (sub === 'remove') {
-            await Expify.rewardRemove(interaction, lang);
+            await Expify.rewardRemove(interaction, lang, client);
         } else if (sub === 'list') {
             await Expify.rewardList(interaction, lang);
         } else if (sub === 'mode') {
-            await Expify.rewardMode(interaction, lang);
+            await Expify.rewardMode(interaction, lang, client);
         }
     } else if (interaction.commandName === 'xp') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         const sub = interaction.options.getSubcommand()
         if (sub === 'set-level') {
-            await Expify.xpSet(interaction, lang);
+            await Expify.xpSet(interaction, lang, client);
         } else if (sub === 'add') {
-            await Expify.xpAddRemove(interaction, lang);
+            await Expify.xpAddRemove(interaction, lang, client);
         } else if (sub === 'remove') {
-            await Expify.xpAddRemove(interaction, lang);
+            await Expify.xpAddRemove(interaction, lang, client);
         } else if (sub === 'calc') {
             await Expify.xpCalc(interaction, lang);
         } else if (sub === 'reset') {
-            await Expify.xpReset(interaction, lang);
+            await Expify.xpReset(interaction, lang, client);
         }
     } else if (interaction.commandName === 'noxp') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        await Expify.noxpIDs(interaction, lang);
+        await Expify.noxpIDs(interaction, lang, client);
     } else if (interaction.commandName === 'top') {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
         await Expify.top(interaction, lang);

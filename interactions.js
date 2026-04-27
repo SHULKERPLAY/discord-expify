@@ -421,7 +421,7 @@ class Expify {
         await Lunar.editReply(interaction, null, [getEmbed]);
     };
     
-    static expifyToggle = async function(interaction, lang) {
+    static expifyToggle = async function(interaction, lang, client) {
         const startTime = Date.now();
         const type = interaction.options.getString('type');
         try {
@@ -429,10 +429,11 @@ class Expify {
             const update = db.prepare(`UPDATE guild_params SET ${type} = 1 - ${type} WHERE guild_id = ?`);
             update.run(interaction.guildId);
         } catch (err) {
-            console.error(`[TOGGLE] Error while toggling xp on ${interaction.guildId}:`, err)
+            console.error(`[TOGGLE] Error while toggling xp on ${interaction.guildId}:`, err.message)
         }
+
         // Get new state for reply
-        const newState = db.prepare(`SELECT ${type} FROM guild_params WHERE guild_id = ?`).get(interaction.guildId);
+        const newState = db.prepare(`SELECT ${type}, admin_cid, lang FROM guild_params WHERE guild_id = ?`).get(interaction.guildId);
 
         // Check if undefined
         if (!newState) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
@@ -443,10 +444,16 @@ class Expify {
         if (type === 'text_xp') {ltype = 'textxp'} else if (type === 'voice_xp') {ltype = 'voicexp'} else if (type === 'video_xp') {ltype = 'videoxp'}
         const replycontent = `${(newState[type] > 0) ? '🟢' : '🔴'} ${l(ltype)} ${(newState[type] > 0) ? `${l('enabled')}` : `${l('disabled')}`}!`
         console.log(`Toggle ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+
+        // Send notification
+        if (newState.admin_cid && newState.admin_cid !== '0' ) {
+            await Lunar.sendEventEmbed(`/expify toggle ${type}`, `<@${interaction.user.id}>`, null, `${replycontent}`, interaction.guild, newState.admin_cid, newState.lang, client);
+        };
+
         await Lunar.editReply(interaction, replycontent);
     };
 
-    static expifyGain = async function(interaction, lang) {
+    static expifyGain = async function(interaction, lang, client) {
         const startTime = Date.now();
         const type = interaction.options.getString('type');
         let quantity = interaction.options.getInteger('quantity');
@@ -454,7 +461,7 @@ class Expify {
         let status;
 
         // Check if guild not exist
-        const probe = db.prepare("SELECT text_xp_rate FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
         if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
         // To XP rate
@@ -473,6 +480,12 @@ class Expify {
 
         //Building response
         console.log(`Updated ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+
+        // Send notification
+        if (probe.admin_cid && probe.admin_cid !== '0' ) {
+            await Lunar.sendEventEmbed(`/expify gain ${type} ${quantity}`, `<@${interaction.user.id}>`, null, `${status}`, interaction.guild, probe.admin_cid, probe.lang, client);
+        };
+
         await Lunar.editReply(interaction, status);
     };
 
@@ -480,8 +493,9 @@ class Expify {
      * @param {interaction} interaction - Interaction object
      * @param {string|null} lang - Language code string. Null if language missing in locales 
      * @param {string} type - 'any_cid' column in guild_params table */
-    static expifyCIDs = async function(interaction, lang, type) {
+    static expifyCIDs = async function(interaction, lang) {
         const startTime = Date.now();
+        const type = interaction.options.getString('type');
         const channel = interaction.options.getChannel('channel');
         let status;
 
@@ -600,7 +614,7 @@ class Expify {
         console.log(`Reset user progress ${interaction.guildId}(${timeDiff(resetTime)}ms)`)
 
         if (status === 'operationok' && probe.admin_cid && probe.admin_cid !== '0' ) {
-            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>: ${getL(probe.lang ?? dLang, 'resetxpcallback')}`);
+            await Lunar.sendEventEmbed(`/expify xp-reset`, `<@${interaction.user.id}>`, null, `${getL(probe.lang ?? dLang, 'resetxpcallback')}`, interaction.guild, probe.admin_cid, probe.lang, client)
         }
 
         //Building response
@@ -752,9 +766,12 @@ class Expify {
         console.log(`[MIGRATE] Updated ${usersToUpdate.length} users in ${interaction.guildId}(${timeDiff(startTime)}ms)`);
 
         // Send notification
+        const mentionString = Array.from(rewardsMap.keys())
+            .map(roleId => `<@&${roleId}>`)
+            .join(', ');
         if (probe.admin_cid && probe.admin_cid !== '0' ) {
             const ld = (key) => getL(probe.lang ?? dLang, key);
-            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>\n✅ ${ld('migratecomplete')} **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n${ld('operationerr')}: ${errorcnt}` : ' '}`);
+            await Lunar.sendEventEmbed(`/expify migrate`, `<@${interaction.user.id}>`, mentionString, `✅ ${ld('migratecomplete')} **${usersToUpdate.length}**! ${(errorcnt) ? `\n\n${ld('operationerr')}: ${errorcnt}` : ' '}`, interaction.guild, probe.admin_cid, probe.lang, client);
         }
 
         await Lunar.editReply(interaction, replycontent);
@@ -884,7 +901,7 @@ class Expify {
         // Send notification
         if (probe.admin_cid && probe.admin_cid !== '0' ) {
             const ld = (key) => getL(probe.lang ?? dLang, key);
-            await Lunar.sendEvent(client, probe.admin_cid, `⚠️ <@${interaction.user.id}>\n✅ ${ld('cleanupcomplete')} **${removedCount}**! ${(errorcnt) ? `\n\n${ld('operationerr')}: ${errorcnt}` : ' '}`);
+            await Lunar.sendEventEmbed(`/expify cleanup-rewards`, `<@${interaction.user.id}>`, null, `✅ ${ld('cleanupcomplete')} **${removedCount}**! ${(errorcnt) ? `\n\n${ld('operationerr')}: ${errorcnt}` : ' '}`, interaction.guild, probe.admin_cid, probe.lang, client);
         }
 
         await Lunar.editReply(interaction, replycontent);
@@ -1054,11 +1071,15 @@ class Expify {
         await Lunar.editReply(interaction, replycontent);
     };
 
-    static rewardRemove = async function(interaction, lang) {
+    static rewardRemove = async function(interaction, lang, client) {
         const startTime = Date.now();
         let result;
         let status;
         const rewardId = interaction.options.getInteger('id') ?? 0;
+
+        // Check if guild not exist
+        const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
         try {
             // Remove reward by ID if it in the same guild
@@ -1080,6 +1101,12 @@ class Expify {
             status = `🟡 ${getL(lang ?? dLang, 'notremoved')}`
             console.log(`Reward ${rewardId} not removed for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
         }
+
+        // Send notification
+        if (params.admin_cid && params.admin_cid !== '0' ) {
+            await Lunar.sendEventEmbed(`/reward remove ${rewardId}`, `<@${interaction.user.id}>`, null, `${status}`, interaction.guild, params.admin_cid, params.lang, client);
+        };
+        
         await Lunar.editReply(interaction, status);
     };
 
@@ -1100,7 +1127,7 @@ class Expify {
         await Lunar.editReply(interaction, null, [getEmbed]);
     };
 
-    static rewardMode = async function(interaction, lang) {
+    static rewardMode = async function(interaction, lang, client) {
         const startTime = Date.now();
         let status;
 
@@ -1108,7 +1135,7 @@ class Expify {
         if (interaction.options.getString('confirmation_1') !== 'Yes' || interaction.options.getString('confirmation_2') !== 'Yes') { return await Lunar.editReply(interaction, `${getL(lang ?? dLang, 'guildresetabort')}`); }
 
         // Check if guild not exist
-        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const params = db.prepare("SELECT reward_mode, admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
         if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
         // Get type to set
@@ -1123,15 +1150,21 @@ class Expify {
 
         //Building response
         console.log(`Updated reward_mode for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
+
+        // Send notification
+        if (params.admin_cid && params.admin_cid !== '0' ) {
+            await Lunar.sendEventEmbed(`/reward mode ${interaction.options.getString('type')}`, `<@${interaction.user.id}>`, null, `${status}`, interaction.guild, params.admin_cid, params.lang, client);
+        };
+
         await Lunar.editReply(interaction, status);
     };
 
-    static xpSet = async function(interaction, lang) {
+    static xpSet = async function(interaction, lang, client) {
         const startTime = Date.now();
         let userData;
 
         // Check if guild not exist
-        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
         if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
         const userid = interaction.options.getUser('user')?.id;
@@ -1162,14 +1195,20 @@ class Expify {
             status = `🟡 ${getL(lang ?? dLang, 'notupdated')}`
         }
         console.log(`[XP] Replaced ${type} for ${interaction.guildId},${userid}(${timeDiff(startTime)}ms)`)
+
+        // Send notification
+        if (params.admin_cid && params.admin_cid !== '0' ) {
+            await Lunar.sendEventEmbed(`/xp set-level ${interaction.options.getInteger('level')}`, `<@${interaction.user.id}>`, `<@${userid}>`, `${status}`, interaction.guild, params.admin_cid, params.lang, client);
+        };
+
         await Lunar.editReply(interaction, status);
     };
 
-    static xpAddRemove = async function(interaction, lang) {
+    static xpAddRemove = async function(interaction, lang, client) {
         const startTime = Date.now();
         
         // Check if guild not exist
-        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
         if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
         const userid = interaction.options.getUser('user')?.id;
@@ -1219,6 +1258,12 @@ class Expify {
         } else {
             status = `🟡 ${getL(lang ?? dLang, 'notupdated')}`
         }
+
+        // Send notification
+        if (params.admin_cid && params.admin_cid !== '0' ) {
+            await Lunar.sendEventEmbed(`/xp ${sub} ${type} ${xp}`, `<@${interaction.user.id}>`, `<@${userid}>`, `${status}`, interaction.guild, params.admin_cid, params.lang, client);
+        };
+
         console.log(`[XP] Replaced ${type} for ${interaction.guildId},${userid}(${timeDiff(startTime)}ms)`)
         await Lunar.editReply(interaction, status);
     };
@@ -1246,11 +1291,11 @@ class Expify {
         await Lunar.editReply(interaction, result);
     };
 
-    static xpReset = async function(interaction, lang) {
+    static xpReset = async function(interaction, lang, client) {
         const startTime = Date.now();
 
         // Check if guild not exist
-        const params = db.prepare("SELECT reward_mode FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        const params = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
         if (!params) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) };
 
         const userid = interaction.options.getUser('user')?.id;
@@ -1300,11 +1345,21 @@ class Expify {
             status = `🟡 ${getL(lang ?? dLang, 'notupdated')}`
         }
         console.log(`[XP] Resetted ${type} for ${interaction.guildId},${userid}(${timeDiff(startTime)}ms)`)
+
+        // Send notification
+        if (params.admin_cid && params.admin_cid !== '0' ) {
+            await Lunar.sendEventEmbed(`/xp reset ${type}`, `<@${interaction.user.id}>`, `<@${userid}>`, `${status}`, interaction.guild, params.admin_cid, params.lang, client);
+        };
+
         await Lunar.editReply(interaction, status);
     };
 
-    static noxpIDs = async function(interaction, lang) {
+    static noxpIDs = async function(interaction, lang, client) {
         const startTime = Date.now();
+
+        // Check if guild not exist
+        const probe = db.prepare("SELECT admin_cid, lang FROM guild_params WHERE guild_id = ?").get(`${interaction.guildId}`);
+        if (!probe) { return await Lunar.editReply(interaction, `${getL( lang ?? dLang, 'guildnotfound')}`) }
 
         let object;
         let type;
@@ -1373,13 +1428,21 @@ class Expify {
         }
 
         // Building response
+        let status;
         if (result.success) {
             console.log(`[noXP] Updated ${type} for ${interaction.guildId}(${timeDiff(startTime)}ms)`)
             if (result.added) {
-                await Lunar.editReply(interaction, `🟢 ${getL(lang ?? dLang, 'added')}`)
+                status = `🟢 ${getL(lang ?? dLang, 'added')}`
+                await Lunar.editReply(interaction, status)
             } else {
-                await Lunar.editReply(interaction, `🟢 ${getL(lang ?? dLang, 'removed')}`)
+                status = `🟢 ${getL(lang ?? dLang, 'removed')}`
+                await Lunar.editReply(interaction, status)
             }
+
+            // Send notification
+            if (probe.admin_cid && probe.admin_cid !== '0' ) {
+                await Lunar.sendEventEmbed(`/noxp ${sub}`, `<@${interaction.user.id}>`, null, status, interaction.guild, probe.admin_cid, probe.lang, client);
+            };
         } else {
             console.log(`[noXP] Rejected ${type} for ${interaction.guildId}: ${result.reason}(${timeDiff(startTime)}ms)`)
             if (result.reason === 'limit_reached') {
@@ -1491,7 +1554,7 @@ class Expify {
 
         // Send notification
         if (params.admin_cid && params.admin_cid !== '0' ) {
-            await Lunar.sendEvent(client, params.admin_cid, `⚠️ <@${interaction.user.id}>\n${replycontent}`);
+            await Lunar.sendEventEmbed(`/lang ${newlang}`, `<@${interaction.user.id}>`, null, `${replycontent}`, interaction.guild, params.admin_cid, params.lang, client);
         }
 
         await Lunar.editReply(interaction, replycontent);

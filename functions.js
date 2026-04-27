@@ -234,6 +234,38 @@ class Lunar {
 
         return newembed;
     };
+    /** Send admin events in embed
+     * @param {string} event - Name of event. It displays in embed title as `Event: ${event}`
+     * @param {string} issuer - Mention of issuer as `<@123456789>`
+     * @param {string} object - Mention of edited object as `<@987654321>`
+     * @param {string} status - Interaction callback
+     * @param {interaction.guild} guild - interaction.guild object
+     * @param {string} cid - admin_cid or another channel id to send notify
+     * @param {string} lang - guild_params `lang` object
+     * @param {client} client - DJS Client object is required to send message */
+    static sendEventEmbed = async function(event, issuer, object, status, guild, cid, lang, client) {
+        if (!client || !lang || !cid) return;
+        const l = (key) => getL(lang ?? dLang, key);
+        const title = `⚠️ ${l('event')}: \`${event}\``;
+
+        // Cunstructing message without undefined parts
+        const data = [
+            issuer ? `### 🚩 ${l('executedby')}\n${issuer}` : null,
+            object ? `### 📌 ${l('object')}\n${object}` : null,
+            status ? `### ℹ️ ${l('status')}\n${status}` : null
+        ]
+        .filter(line => line !== null) // Removing null elements
+        .join('\n');
+
+        const guildName = guild?.name ?? undefined;
+        const guildIcon = guild?.iconURL() ?? undefined;
+
+        // Construct embed
+        const embed = Lunar.createEmbed(title, data, null, Lunar.getRandomAestheticColor(), guildName, guildIcon);
+
+        // Send message
+        await Lunar.sendEvent(client, cid, null, [embed]);
+    };
 }
 
 //Integer randomizer
