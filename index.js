@@ -1,5 +1,5 @@
 // Core can be started only by shard manager
-const corever = '26.04.1d';
+const corever = '26.04.2a';
 const startTime = Date.now();
 
 const { getL, Lunar, guildCreate } = require('./functions.js');
@@ -28,72 +28,67 @@ client.on('interactionCreate', async (interaction) => {
     //Get locale obj and null if not found
     const lang = getL(interaction.locale, 'hello') ? `${interaction.locale}` : null;
 
-    //get commandName
-    if (interaction.commandName === 'ping') {
-        await Expify.ping(interaction, client, lang);
-    } else if (interaction.commandName === 'about') {
-        await Expify.about(interaction, lang, corever);
-    } else if (interaction.commandName === 'invite') {
-        await Expify.invite(interaction, lang);
-    } else if (interaction.commandName === 'expify') {
+    // Commands that don't need to defer reply
+    const skipDefer = ['ping', 'about', 'invite', 'rank'];
+
+    // Send defer if not in skiplist
+    if (!skipDefer.includes(interaction.commandName)) {
         await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        const sub = interaction.options.getSubcommand();
-        if (sub === 'get') {
-            await Expify.expifyGet(interaction, lang);
-        } else if (sub === 'toggle') {
-            await Expify.expifyToggle(interaction, lang, client);
-        } else if (sub === 'gain') {
-            await Expify.expifyGain(interaction, lang, client);
-        } else if (sub === 'channels') {
-            await Expify.expifyCIDs(interaction, lang);
-        } else if (sub === 'reset') {
-            await Expify.expifyReset(interaction, lang);
-        } else if (sub === 'migrate') {
-            await Expify.expifyMigrate(client, interaction, lang);
-        } else if (sub === 'migrate-help') {
-            await Expify.expifyMigrateHelp(interaction, lang);
-        } else if (sub === 'xp-reset') {
-            await Expify.expifyXpReset(client, interaction, lang);
-        } else if (sub === 'cleanup-rewards') {
-            await Expify.expifyCleanupRewards(client, interaction, lang);
+    }
+    
+    // Use router to perform commands
+    const CommandRouter = {
+        // Full commands
+        ping: (int) => Expify.ping(int, client, lang),
+        about: (int) => Expify.about(int, lang, corever),
+        invite: (int) => Expify.invite(int, lang),
+        rank: (int) => Expify.rank(int, lang, isephemeral),
+        noxp: (int) => Expify.noxpIDs(int, lang, client),
+        top: (int) => Expify.top(int, lang),
+        lang: (int) => Expify.lang(client, int, lang),
+        // With subcommands
+        expify: async (int) => {
+            const sub = int.options.getSubcommand();
+            const subCommands = {
+                get: () => Expify.expifyGet(int, lang),
+                gain: () => Expify.expifyGain(int, lang, client),
+                channels: () => Expify.expifyCIDs(int, lang),
+                reset: () => Expify.expifyReset(int, lang),
+                migrate: () => Expify.expifyMigrate(client, int, lang),
+                "migrate-help": () => Expify.expifyMigrateHelp(int, lang),
+                "xp-reset": () => Expify.expifyXpReset(client, int, lang),
+                "cleanup-rewards": () => Expify.expifyCleanupRewards(client, int, lang),
+                toggle: () => Expify.expifyToggle(int, lang, client)
+            };
+            return subCommands[sub]?.();
+        },
+        reward: async (int) => {
+            const sub = int.options.getSubcommand();
+            const subCommands = {
+                add: () => Expify.rewardAdd(int, lang),
+                remove: () => Expify.rewardRemove(int, lang, client),
+                list: () => Expify.rewardList(int, lang),
+                mode: () => Expify.rewardMode(int, lang, client)
+            };
+            return subCommands[sub]?.();
+        },
+        xp: async (int) => {
+            const sub = int.options.getSubcommand();
+            const subCommands = {
+                "set-level": () => Expify.xpSet(interaction, lang, client),
+                add: () => Expify.xpAddRemove(interaction, lang, client),
+                remove: () => Expify.xpAddRemove(interaction, lang, client),
+                calc: () => Expify.xpCalc(interaction, lang),
+                reset: () => Expify.xpReset(interaction, lang, client)
+            };
+            return subCommands[sub]?.();
         }
-    } else if (interaction.commandName === 'rank') {
-        await Expify.rank(interaction, lang, isephemeral);
-    } else if (interaction.commandName === 'reward') {
-        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        const sub = interaction.options.getSubcommand();
-        if (sub === 'add') {
-            await Expify.rewardAdd(interaction, lang);
-        } else if (sub === 'remove') {
-            await Expify.rewardRemove(interaction, lang, client);
-        } else if (sub === 'list') {
-            await Expify.rewardList(interaction, lang);
-        } else if (sub === 'mode') {
-            await Expify.rewardMode(interaction, lang, client);
-        }
-    } else if (interaction.commandName === 'xp') {
-        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        const sub = interaction.options.getSubcommand()
-        if (sub === 'set-level') {
-            await Expify.xpSet(interaction, lang, client);
-        } else if (sub === 'add') {
-            await Expify.xpAddRemove(interaction, lang, client);
-        } else if (sub === 'remove') {
-            await Expify.xpAddRemove(interaction, lang, client);
-        } else if (sub === 'calc') {
-            await Expify.xpCalc(interaction, lang);
-        } else if (sub === 'reset') {
-            await Expify.xpReset(interaction, lang, client);
-        }
-    } else if (interaction.commandName === 'noxp') {
-        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        await Expify.noxpIDs(interaction, lang, client);
-    } else if (interaction.commandName === 'top') {
-        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        await Expify.top(interaction, lang);
-    } else if (interaction.commandName === 'lang') {
-        await interaction.deferReply({ flags: isephemeral ? [MessageFlags.Ephemeral] : [] });
-        await Expify.lang(client, interaction, lang);
+    };
+
+    // Perform interaction
+    const command = CommandRouter[interaction.commandName];
+    if (command) {
+        await command(interaction);
     }
 });
 

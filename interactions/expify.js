@@ -262,11 +262,16 @@ async function IexpifyXpReset(client, interaction, lang) {
     console.log(`Reset user progress ${interaction.guildId}(${timeDiff(resetTime)}ms)`)
 
     if (status === 'operationok' && probe.admin_cid && probe.admin_cid !== '0' ) {
-        await Lunar.sendEventEmbed(`/expify xp-reset`, `<@${interaction.user.id}>`, null, `${getL(probe.lang ?? dLang, 'resetxpcallback')}`, interaction.guild, probe.admin_cid, probe.lang, client)
+        await Lunar.sendEventEmbed(`/expify xp-reset`, `<@${interaction.user.id}>`, null, `🟢 ${getL(probe.lang ?? dLang, 'resetxpcallback')}`, interaction.guild, probe.admin_cid, probe.lang, client)
     }
 
     //Building response
-    let replycontent = `${getL(lang ?? dLang, `${status}`)}`;
+    let replycontent;
+    if (status === 'operationok') { 
+        replycontent = `🟢 ${getL(lang ?? dLang, 'resetxpcallback')}`;
+    } else {
+        replycontent = status;
+    }
     await Lunar.editReply(interaction, replycontent);
 }
 

@@ -3,7 +3,7 @@ const path = require('node:path');
 const { token } = require('./config.json');
 const { deployInteractions } = require('./deploy.js');
 const { timeDiff } = require('./utils.js');
-const { db, dbSaveOnExit, dbSave, initializeDB } = require('./dbManager.js')
+const { dbSaveOnExit, dbSave, initializeDB } = require('./dbManager.js')
 
 const logPrefix = '[Expify Manager]';
 const startTime = Date.now();

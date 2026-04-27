@@ -1,4 +1,3 @@
-const { db } = require('../dbManager.js')
 const { getL, Lunar, EInteractions,  dLang } = require('../functions.js');
 const { timeDiff } = require('../utils.js');
 

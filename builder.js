@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ChannelType } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { getLoc } = require('./functions.js');
 const { setDefaultContext, setAvailable, setAdminOnly, setOwnerOnly, setModeratorOnly, setModeratorLite, addPublicReply, addConfirmationOption, addSimpleChoice, addXpTypeOption, addTextChannelOption } = require('./helpers.js');
 
