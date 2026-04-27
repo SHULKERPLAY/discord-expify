@@ -1,6 +1,6 @@
 const { Client, Routes, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
-const { timeDiff } = require('./functions.js');
+const { timeDiff } = require('./utils.js');
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });

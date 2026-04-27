@@ -1,10 +1,10 @@
 // Core can be started only by shard manager
-const corever = '26.04.1b';
+const corever = '26.04.1c';
 const startTime = Date.now();
 
-const { getL, Lunar } = require('./functions.js');
+const { getL, Lunar, guildCreate } = require('./functions.js');
 const { Expify } = require('./interactions.js');
-const { timeDiff } = require('./functions.js');
+const { timeDiff } = require('./utils.js');
 const { db } = require('./dbManager.js');
 const { processXP, messageActivity } = require('./xpProcess.js');
 const { processRewards } = require('./rewardProcess.js');
@@ -106,7 +106,7 @@ client.on('messageCreate', async (message) => {
 
 client.on('guildCreate', (guild) => {
     // Init guild in database
-    Expify.guildCreate(guild.id)
+    guildCreate(guild.id)
 });
 
 //actions as client ready

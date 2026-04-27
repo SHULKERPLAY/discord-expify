@@ -1,5 +1,5 @@
-const { timeDiff, getL, dLang } = require('./functions.js');
-const { Lunar } = require('./functions.js');
+const { Lunar, getL, dLang } = require('./functions.js');
+const { timeDiff } = require('./utils.js');
 const logprefix = '[Reward Process]'
 
 /** Parse XP string "text,voice,video" into object */

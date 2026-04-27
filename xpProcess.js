@@ -1,4 +1,4 @@
-const { timeDiff } = require('./functions.js');
+const { timeDiff } = require('./utils.js');
 const logprefix = '[XP Process]'
 
 // Activity Buffer (Stores unique strings type 'guildId|userId|channelId')
