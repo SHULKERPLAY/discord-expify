@@ -1,5 +1,7 @@
 ![Yuko <3](https://github.com/SHULKERPLAY/discord-expify/blob/prod/expify.webp)
 
+*Unavailable in Discord Application Discovery for now. You can [click here to try installation on your server](https://discord.com/oauth2/authorize?client_id=848867725866172426)*
+
 # EXPIFY
 A Discord bot for servers featuring an enhanced leveling system for Text, Voice, and Video. It supports toggling experience types, adjusting XP gain rates, reward roles, ignoring specific channels/users/roles, and much more, with a focus on the most honest competition for server activity.
 
