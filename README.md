@@ -1,5 +1,9 @@
 ![Yuko <3](https://github.com/SHULKERPLAY/discord-expify/blob/prod/expify.webp)
 
+*Пока недоступен в магазине Discord. Можно [установить на сервер тут](https://discord.com/oauth2/authorize?client_id=848867725866172426)*
+
+> [ENGLISH README](https://github.com/SHULKERPLAY/discord-expify/blob/prod/README-en.md)
+
 # EXPIFY
 Дискорд бот для серверов, с улучшенной системой левелинга Текста, Голоса и Видео. Поддерживает отключение типов опыта, регулировку скорости заработка опыта, начисление ролей-наград, каналы, пользователи и роли без получения опыта и многое другое с ориентацией на максимально честное соревнование в активности сервера.
 

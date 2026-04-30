@@ -1,0 +1,27 @@
+{
+  "name": "expify",
+  "version": "26.04.1",
+  "description": "A Discord bot for servers featuring an enhanced leveling system for Text, Voice, and Video. It supports toggling experience types, adjusting XP gain rates, reward roles, ignoring specific channels/users/roles, and much more, with a focus on the most honest competition for server activity.",
+  "keywords": [
+    "discord-bot",
+    "sqlite3",
+    "rewards",
+    "leveling_bot"
+  ],
+  "homepage": "https://github.com/SHULKERPLAY/discord-expify",
+  "bugs": {
+    "url": "https://github.com/SHULKERPLAY/discord-expify/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SHULKERPLAY/discord-expify.git"
+  },
+  "license": "Apache-2.0",
+  "author": "SHULKERPLAY",
+  "type": "commonjs",
+  "main": "shardManager.js",
+  "dependencies": {
+    "better-sqlite3": "12.9.0",
+    "discord.js": "14.25.1"
+  }
+}

@@ -1,4 +1,4 @@
-const { timeDiff } = require('./functions.js');
+const { timeDiff } = require('./utils.js');
 
 const path = require('node:path');
 const Database = require('better-sqlite3');

@@ -1,4 +1,5 @@
-const { timeDiff } = require('./functions.js');
+const { timeDiff } = require('./utils.js');
+const { EInteractions } = require('./functions.js')
 const logprefix = '[XP Process]'
 
 // Activity Buffer (Stores unique strings type 'guildId|userId|channelId')
@@ -56,7 +57,7 @@ async function processXP(client, db) {
     for (const guild of client.guilds.cache.values()) {
         guildTime = Date.now();
         console.log(`${logprefix} Check ${guild.id}`)
-        const params = db.prepare(`SELECT * FROM guild_params WHERE guild_id = ?`).get(guild.id);
+        const params = EInteractions.loadGuildParam(`*`, guild.id);
         if (!params) continue; // SKIP if guild not setted up
 
         // Preparing noXP lists
