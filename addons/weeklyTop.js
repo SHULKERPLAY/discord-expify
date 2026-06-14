@@ -247,17 +247,17 @@ client.once(Events.ClientReady, async (readyClient) => {
     // Parse params and send tops
     // Text XP
     for (let i = 1; i <= ARG_TEXT_PAGES; i++) {
-        localTop('ru', 'text_xp', i, guild, ARG_CID)
+        await localTop('ru', 'text_xp', i, guild, ARG_CID)
         await sleep(500);
     }
     // Voice XP
     for (let i = 1; i <= ARG_VOICE_PAGES; i++) {
-        localTop('ru', 'voice_xp', i, guild, ARG_CID)
+        await localTop('ru', 'voice_xp', i, guild, ARG_CID)
         await sleep(500);
     }
     // Video XP
     for (let i = 1; i <= ARG_VIDEO_PAGES; i++) {
-        localTop('ru', 'video_xp', i, guild, ARG_CID)
+        await localTop('ru', 'video_xp', i, guild, ARG_CID)
         await sleep(500);
     }
     //End session
